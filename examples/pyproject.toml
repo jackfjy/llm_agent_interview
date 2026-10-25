@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-interview-labs"
+version = "0.1.0"
+description = "Deterministic Chinese LLM engineering teaching labs"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+sdk = ["mcp==2.3.0", "openai==3.37.0", "openai-agents==0.24.0", "langgraph==1.2.17"]
+
+[tool.setuptools]
+packages = ["examples", "examples.rag", "examples.reliable_agent", "examples.mcp_tools", "examples.evaluation"]
+package-dir = {examples = "."}
+
+[tool.setuptools.package-data]
+"examples.evaluation" = ["cases.json"]

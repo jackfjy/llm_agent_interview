@@ -1,3 +1,12 @@
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Python teaching labs: environments, bytecode and local state
+__pycache__/
+*.py[cod]
+examples/.venv/
+examples/.state/
+examples/*.egg-info/
+examples/build/
+examples/dist/

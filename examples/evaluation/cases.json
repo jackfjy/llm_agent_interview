@@ -1,0 +1,618 @@
+[
+  {
+    "name": "rag_staff_refund",
+    "kind": "rag",
+    "query": "refund",
+    "principal": "staff",
+    "changes": [],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "refund"
+      ]
+    },
+    "contains": "30 days"
+  },
+  {
+    "name": "rag_guest_denied",
+    "kind": "rag",
+    "query": "refund",
+    "principal": "guest",
+    "changes": [],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_finance_payroll",
+    "kind": "rag",
+    "query": "payroll",
+    "principal": "finance",
+    "changes": [],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "payroll"
+      ]
+    },
+    "contains": "999"
+  },
+  {
+    "name": "rag_staff_payroll_denied",
+    "kind": "rag",
+    "query": "payroll",
+    "principal": "staff",
+    "changes": [],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_public_hours",
+    "kind": "rag",
+    "query": "hours",
+    "principal": "guest",
+    "changes": [],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "hours"
+      ]
+    }
+  },
+  {
+    "name": "rag_absent_evidence",
+    "kind": "rag",
+    "query": "unicorn",
+    "principal": "staff",
+    "changes": [],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_empty_query",
+    "kind": "rag",
+    "query": "",
+    "principal": "staff",
+    "changes": [],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_update_removes_old_terms",
+    "kind": "rag",
+    "query": "refund",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "refund",
+        "text": "Atlas returns accepted for 14 days.",
+        "readers": [
+          "staff"
+        ],
+        "version": 2
+      }
+    ],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_update_new_citation",
+    "kind": "rag",
+    "query": "returns",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "refund",
+        "text": "Atlas returns accepted for 14 days.",
+        "readers": [
+          "staff"
+        ],
+        "version": 2
+      }
+    ],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "refund"
+      ]
+    },
+    "contains": "[refund@v2]"
+  },
+  {
+    "name": "rag_deleted_document",
+    "kind": "rag",
+    "query": "refund",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "delete",
+        "id": "refund"
+      }
+    ],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_permission_revoked",
+    "kind": "rag",
+    "query": "refund",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "refund",
+        "text": "Atlas refund 30 days.",
+        "readers": [
+          "finance"
+        ],
+        "version": 2
+      }
+    ],
+    "expected": {
+      "refused": true,
+      "sources": []
+    }
+  },
+  {
+    "name": "rag_permission_granted",
+    "kind": "rag",
+    "query": "payroll",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "payroll",
+        "text": "Payroll amount is 999.",
+        "readers": [
+          "finance",
+          "staff"
+        ],
+        "version": 2
+      }
+    ],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "payroll"
+      ]
+    }
+  },
+  {
+    "name": "rag_chinese_bigrams",
+    "kind": "rag",
+    "query": "报销",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "cn",
+        "text": "差旅报销需要发票。",
+        "readers": [
+          "staff"
+        ]
+      }
+    ],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "cn"
+      ]
+    }
+  },
+  {
+    "name": "rag_exact_phrase_rank",
+    "kind": "rag",
+    "query": "Atlas refund",
+    "principal": "staff",
+    "changes": [
+      {
+        "op": "upsert",
+        "id": "partial",
+        "text": "Atlas product manual.",
+        "readers": [
+          "staff"
+        ]
+      }
+    ],
+    "expected": {
+      "refused": false,
+      "sources": [
+        "refund",
+        "partial"
+      ]
+    }
+  },
+  {
+    "name": "agent_waits_for_approval",
+    "kind": "agent",
+    "actions": [
+      "run"
+    ],
+    "options": {},
+    "service": {},
+    "expected": {
+      "status": "waiting_approval",
+      "effects": 0,
+      "attempts": 0
+    }
+  },
+  {
+    "name": "agent_approval_resume",
+    "kind": "agent",
+    "actions": [
+      "run",
+      "approve",
+      "run"
+    ],
+    "options": {},
+    "service": {},
+    "expected": {
+      "status": "completed",
+      "effects": 1,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_cancel_before_run",
+    "kind": "agent",
+    "actions": [
+      "cancel",
+      "run"
+    ],
+    "options": {
+      "approved": true
+    },
+    "service": {},
+    "expected": {
+      "status": "cancelled",
+      "effects": 0,
+      "attempts": 0
+    }
+  },
+  {
+    "name": "agent_cancel_waiting",
+    "kind": "agent",
+    "actions": [
+      "run",
+      "cancel",
+      "run"
+    ],
+    "options": {},
+    "service": {},
+    "expected": {
+      "status": "cancelled",
+      "effects": 0,
+      "attempts": 0
+    }
+  },
+  {
+    "name": "agent_retry_transient",
+    "kind": "agent",
+    "actions": [
+      "run"
+    ],
+    "options": {
+      "approved": true
+    },
+    "service": {
+      "failures_left": 1
+    },
+    "expected": {
+      "status": "completed",
+      "effects": 1,
+      "attempts": 2
+    }
+  },
+  {
+    "name": "agent_retry_exhausted",
+    "kind": "agent",
+    "actions": [
+      "run",
+      "restart",
+      "run"
+    ],
+    "options": {
+      "approved": true,
+      "max_attempts": 2
+    },
+    "service": {
+      "failures_left": 9
+    },
+    "expected": {
+      "status": "failed",
+      "effects": 0,
+      "attempts": 2
+    }
+  },
+  {
+    "name": "agent_cost_exhausted",
+    "kind": "agent",
+    "actions": [
+      "run"
+    ],
+    "options": {
+      "approved": true,
+      "cost_budget": 1
+    },
+    "service": {
+      "failures_left": 1
+    },
+    "expected": {
+      "status": "failed",
+      "effects": 0,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_timeout_exhausted",
+    "kind": "agent",
+    "actions": [
+      "run"
+    ],
+    "options": {
+      "approved": true,
+      "max_attempts": 1,
+      "timeout": 0.001
+    },
+    "service": {
+      "latency": 0.01
+    },
+    "expected": {
+      "status": "failed",
+      "effects": 0,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_crash_recovery",
+    "kind": "agent",
+    "actions": [
+      "crash",
+      "restart",
+      "run"
+    ],
+    "options": {
+      "approved": true
+    },
+    "service": {},
+    "expected": {
+      "status": "completed",
+      "effects": 1,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_crash_at_last_attempt",
+    "kind": "agent",
+    "actions": [
+      "crash",
+      "restart",
+      "run"
+    ],
+    "options": {
+      "approved": true,
+      "max_attempts": 1,
+      "cost_budget": 1
+    },
+    "service": {},
+    "expected": {
+      "status": "completed",
+      "effects": 1,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_duplicate_run",
+    "kind": "agent",
+    "actions": [
+      "run",
+      "run"
+    ],
+    "options": {
+      "approved": true
+    },
+    "service": {},
+    "expected": {
+      "status": "completed",
+      "effects": 1,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "agent_total_deadline",
+    "kind": "agent",
+    "actions": [
+      "run"
+    ],
+    "options": {
+      "approved": true,
+      "timeout": 1,
+      "time_budget": 0.001
+    },
+    "service": {
+      "latency": 0.01
+    },
+    "expected": {
+      "status": "failed",
+      "effects": 0,
+      "attempts": 1
+    }
+  },
+  {
+    "name": "tool_precedence",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "2+3*4"
+    },
+    "expected": {
+      "ok": true,
+      "result": 14
+    }
+  },
+  {
+    "name": "tool_unary",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "-(2+3)"
+    },
+    "expected": {
+      "ok": true,
+      "result": -5
+    }
+  },
+  {
+    "name": "tool_decimal",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "1.5/0.5"
+    },
+    "expected": {
+      "ok": true,
+      "result": 3.0
+    }
+  },
+  {
+    "name": "tool_code_execution",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "__import__(\"os\")"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_exponent",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "2**1000"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_zero_division",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "1/0"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_boolean",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "True+1"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_length_limit",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_node_limit",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_magnitude_limit",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "1000000000+1"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_unknown_dispatch",
+    "kind": "tool",
+    "tool": "weather",
+    "arguments": {
+      "city": "南京"
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_bad_arguments",
+    "kind": "tool",
+    "tool": "calculate",
+    "arguments": {
+      "expression": "1",
+      "extra": 1
+    },
+    "expected": {
+      "ok": false
+    }
+  },
+  {
+    "name": "tool_weather_fixture",
+    "kind": "tool",
+    "tool": "get_weather",
+    "arguments": {
+      "city": "南京"
+    },
+    "expected": {
+      "ok": true,
+      "result": {
+        "city": "南京",
+        "temperature_c": 22,
+        "condition": "晴",
+        "fixture": true
+      }
+    }
+  },
+  {
+    "name": "tool_weather_unknown_city",
+    "kind": "tool",
+    "tool": "get_weather",
+    "arguments": {
+      "city": "Atlantis"
+    },
+    "expected": {
+      "ok": false
+    }
+  }
+]
