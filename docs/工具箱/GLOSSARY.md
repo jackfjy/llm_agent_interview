@@ -1,5 +1,11 @@
 # 📚 LLM & Agent 术语表
 
+> last_verified: 2026-10-25
+> versions: MCP 2026-07-28；Responses；LangChain v1
+> 适用范围：新增与修订术语，不表示其余全部术语逐条重核
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [Responses 迁移](https://developers.openai.com/api/docs/guides/migrate-to-responses)、[Assistants 迁移](https://developers.openai.com/api/docs/assistants/migration)、[Agents SDK](https://openai.github.io/openai-agents-python/)、[LangChain v1 迁移](https://docs.langchain.com/oss/python/migrate/langchain-v1)、[LangGraph v1 迁移](https://docs.langchain.com/oss/python/migrate/langgraph-v1)
+
 > 中英对照，面试必备术语速查
 >
 > 本表收录 120+ 核心术语，按领域分类，覆盖 LLM 基础、训练微调、RAG、Agent、推理部署、工程实践、多模态及前沿方向。
@@ -121,7 +127,12 @@
 | LangChain | LangChain | 流行的 LLM 应用开发框架，提供链式调用和 Agent 抽象 | 第4章 |
 | LangGraph | LangGraph | LangChain 团队的图状态机框架，用于构建复杂 Agent 工作流 | 第4章 |
 | CrewAI | CrewAI | 基于角色的多智能体协作框架 | 第4章 |
-| OpenAI Assistants API | OpenAI 助手 API | OpenAI 提供的内置工具（代码解释器/文件检索/函数调用）的 Agent API | 第4章 |
+| OpenAI Assistants API | OpenAI 助手 API（历史） | 已于 2026-08-26 下线，迁移到 Responses/Conversations | 第6/39章 |
+| Responses API | 响应 API | 通过有类型的 Item 承载模型输出、工具调用与工具结果；使用 call_id 关联工具输出 | 第6/39/40章 |
+| Conversations API | 会话 API | 与 Responses 配合管理持久对话状态 | 第6/39章 |
+| OpenAI Agents SDK | 智能体运行时 SDK | 默认使用 Responses，提供工具循环、handoff、guardrails、会话与 tracing | 第6/10/39章 |
+| Handoff | 执行权交接 | 将后续控制交给目标 Agent；与作为工具调用子 Agent 后返回不同 | 第10/39章 |
+| create_agent | LangChain v1 Agent 工厂 | 基于 LangGraph 运行时创建 Agent，配合 middleware 与结构化输出策略 | 第11/41章 |
 
 ---
 

@@ -1,5 +1,11 @@
 # 41. LangChain 进阶实战
 
+> last_verified: 2026-10-25
+> versions: LangChain v1；LangGraph v1；langchain-classic 兼容片段
+> 适用范围：v1 迁移与工程原理；未对整章嵌入代码建立锁定环境
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [LangChain v1 迁移](https://docs.langchain.com/oss/python/migrate/langchain-v1)、[LangGraph v1 迁移](https://docs.langchain.com/oss/python/migrate/langgraph-v1)
+
 > 本文涵盖 LangChain 框架的进阶知识点，包括自定义组件、可观测性、流式输出、异步编程、错误处理、生产部署等核心主题。适合有一定 LangChain 基础、准备中高级 LLM/AI 工程师面试的读者。
 
 ---
@@ -971,8 +977,8 @@ docs = retriever.invoke("LangChain RAG")
 ```python
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import (
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_classic.retrievers.document_compressors import (
     DocumentCompressorPipeline,
     EmbeddingsFilter,
 )
@@ -1018,100 +1024,50 @@ docs = compression_retriever.invoke("什么是 LangChain")
 
 ---
 
-## 七、LangChain v0.3 核心变化
+## 七、LangChain v1 迁移与历史接口
 
-### Q: LangChain v0.3 相比 v0.2 有哪些重大变化？迁移时需要注意什么？ ⭐⭐⭐
+### Q: 从 v0.3 或旧 LangGraph Agent 迁移到 v1，需要检查什么？ ⭐⭐⭐
 
-**答**：
-
-LangChain v0.3（2024年发布）的核心变化：
-
-1. **全面转向 Pydantic v2**：不再兼容 Pydantic v1，所有自定义组件需要迁移
-2. **移除 langchain.community 中的旧代码**：社区集成迁移到独立包
-3. **统一 Runnable 接口**：所有组件必须实现 Runnable 协议
-4. **langchain-core 精简**：移除不必要的依赖
+1. **入口**：新 Agent 使用 `from langchain.agents import create_agent`。旧 `langgraph.prebuilt.create_react_agent` 已弃用；弃用不意味着所有旧环境立即不能运行。
+2. **提示与状态**：静态提示使用 `system_prompt`；动态提示、模型选择、模型前后处理和工具错误处理迁移到 middleware。自定义状态遵守 v1 的类型约束，不能只改函数名。
+3. **结构化输出**：使用 `response_format`，按模型能力选择 `ProviderStrategy` 或 `ToolStrategy`，检查 `structured_response` 与校验错误。
+4. **旧组件**：`LLMChain`、旧 retrievers 与旧 AgentExecutor 等通过独立的 `langchain-classic` 兼容；provider 集成仍独立安装。
+5. **运行时**：LangGraph v1 大体向后兼容。持久化要选择可跨进程恢复的 checkpointer；内存 saver 只适合演示。`interrupt` 后恢复时节点代码可能重放，应将外部写入设计为幂等操作。
 
 ```python
-# ❌ v0.2 写法（已废弃）
-from langchain.chat_models import ChatOpenAI
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import PyPDFLoader
+# v1 示意片段；未执行在线调用，model/tools 由应用提供
+from langchain.agents import create_agent
+from langchain.agents.structured_output import ToolStrategy
+from pydantic import BaseModel
 
-# ✅ v0.3 写法
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFLoader
+class Answer(BaseModel):
+    answer: str
+    source_ids: list[str]
 
-# Pydantic v2 迁移示例
-from pydantic import BaseModel, Field  # 使用 Pydantic v2
-
-class MyTool(BaseModel):
-    name: str = Field(description="工具名称")
-    description: str = Field(description="工具描述")
-
-    # v2: 使用 model_validator 替代 validator
-    from pydantic import model_validator
-
-    @model_validator(mode="after")
-    def validate_name(self):
-        if len(self.name) < 2:
-            raise ValueError("名称至少2个字符")
-        return self
+agent = create_agent(
+    model=model,
+    tools=tools,
+    system_prompt="依据工具来源回答，缺少证据时说明不知道。",
+    response_format=ToolStrategy(Answer),
+)
+result = agent.invoke({"messages": [{"role": "user", "content": "查询年假政策"}]})
+answer = result["structured_response"]
 ```
 
-**迁移清单**：
-```bash
-# 更新包
-pip install langchain>=0.3 langchain-core>=0.3 langchain-openai>=0.2
+schema 只保证字段格式。还要验证来源存在、权限有效、答案得到引用支持；工具失败处理与输出校验不是同一件事。
 
-# 检查 Pydantic v1 兼容性
-pip install langchain-core --upgrade
+### Q: 旧版代码怎样保留而不误导安装？
 
-# 常见修改
-# 1. import 路径变更
-# 2. Pydantic v1 -> v2
-# 3. .dict() -> .model_dump()
-# 4. .schema() -> .model_json_schema()
-```
-
----
-
-### Q: LangChain v0.3 中 packages 拆分策略是什么？为什么这样设计？ ⭐⭐⭐
-
-**答**：
-
-v0.3 采用更细粒度的包拆分：
-
-```
-langchain-core        # 核心抽象（Runnable, Message, Document 等）
-langchain-openai      # OpenAI 集成
-langchain-anthropic   # Anthropic 集成
-langchain-community   # 社区贡献的集成（大型包）
-langchain-text-splitters # 文本分割器
-langchain             # 主包（依赖 langchain-core）
-```
-
-设计原因：
-1. **依赖隔离**：不需要 Anthropic SDK 就不用安装它
-2. **独立版本管理**：各集成包可独立发版
-3. **安全审计**：每个包的依赖链更短，更易审计
-4. **减少安装冲突**：不同 SDK 的依赖冲突概率降低
+**legacy（历史兼容）**：本章其他 `langchain.retrievers` 风格示例体现旧组件设计。导入应迁移到 `langchain_classic.retrievers`，并单独安装 `langchain-classic`；不能宣称“安装任意最新版”就能运行整章。若复现 v0.3 项目，使用其完整锁文件，不使用跨主版本的 `>=0.3` 安装说明。
 
 ```python
-# 最小安装
-# pip install langchain-core langchain-openai
-
-# 完整安装
-# pip install langchain langchain-openai langchain-community
-
-# 推荐的 requirements.txt
-"""
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
-langchain-text-splitters>=0.3.0
-"""
+# 历史组件的现行兼容命名空间，依赖版本仍需在项目中锁定
+from langchain_classic.retrievers import ContextualCompressionRetriever
+# AgentExecutor 仅作旧项目迁移对照，新项目看 create_agent
+from langchain_classic.agents import AgentExecutor
 ```
+
+包拆分服务于依赖隔离：`langchain-core` 提供 Runnable/Message 等抽象，`langchain-openai` 提供模型集成，`langchain-community` 包含社区组件，`langchain-classic` 承载旧抽象。不要把这些包的版本号当作必须一致的数字；解析并锁定一组兼容版本。
 
 ---
 
@@ -1297,8 +1253,8 @@ async def chat_with_fallback(request: dict):
 
 ```python
 # 1. Prompt 压缩 — 减少输入 token
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import LongLLMLinguaCompressor
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_classic.retrievers.document_compressors import LongLLMLinguaCompressor
 
 compressor = LongLLMLinguaCompressor()
 compression_retriever = ContextualCompressionRetriever(
@@ -1482,20 +1438,17 @@ def search_knowledge_base(query: str) -> str:
     response = query_engine.query(query)
     return str(response)
 
-# 在 LangChain Agent 中使用
-from langchain.agents import create_tool_calling_agent, AgentExecutor
-from langchain_core.prompts import ChatPromptTemplate
+# 在 LangChain v1 Agent 中使用（未执行的整合片段）
+from langchain.agents import create_agent
 
-llm = ChatOpenAI(model="gpt-4o")
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "你是一个助手，使用工具回答问题"),
-    ("human", "{input}"),
-    ("placeholder", "{agent_scratchpad}"),
-])
+agent = create_agent(
+    model=ChatOpenAI(model="gpt-4o"),
+    tools=[search_knowledge_base],
+    system_prompt="使用知识库工具回答问题，缺少证据时拒绝猜测。",
+)
+result = agent.invoke({"messages": [{"role": "user", "content": "公司的年假政策是什么？"}]})
 
-agent = create_tool_calling_agent(llm, [search_knowledge_base], prompt)
-executor = AgentExecutor(agent=agent, tools=[search_knowledge_base], verbose=True)
-result = executor.invoke({"input": "公司的年假政策是什么？"})
+
 ```
 
 ---

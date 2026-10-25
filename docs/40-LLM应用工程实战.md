@@ -1,8 +1,22 @@
 # 40 - LLM 应用工程实战
 
+> last_verified: 2026-10-25
+> versions: Responses API；openai==3.37.0 / openai-agents==0.24.0 为配套实验版本；正文在线片段未执行
+> 适用范围：当前 API 路线与既有 Agent 工程原理；旧框架片段保留为历史对照
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [Responses 迁移](https://developers.openai.com/api/docs/guides/migrate-to-responses)、[Assistants 迁移](https://developers.openai.com/api/docs/assistants/migration)、[Agents SDK](https://openai.github.io/openai-agents-python/)
+
 > 涵盖 Prompt 注入防御、流式响应、缓存策略、成本控制、模型路由、可观测性、多轮对话管理等 LLM 应用工程核心话题。
 
 ---
+
+## 当前 API 路线与示例边界
+
+新实践以 **Responses API + 明确的工具执行循环**为主线：模型返回带类型的 Item，工具调用中的 `call_id` 必须与 `function_call_output` 对应。保存完整 `response.output`，不要只保存可见文本，否则会丢失工具调用或推理关联。对话状态可选择自行保存 Item、使用 `previous_response_id`，或使用 Conversations；选择前要考虑数据保留、重试和恢复要求。
+
+Chat Completions **仍受支持**；本章原有 `chat.completions.create` 片段用于说明消息与工具循环，不应误读为已停用。**Assistants API 已于 2026-08-26 下线**，新代码应迁移到 Responses/Conversations。
+
+运行时可选原生 SDK 自行控制循环、OpenAI Agents SDK 或 LangGraph。Agents SDK 默认使用 Responses，提供工具循环、handoff、guardrails、会话与 tracing；它并不自动保证外部操作恰好执行一次。`handoff` 把后续执行权交给目标 Agent，`agent.as_tool()` 则把子 Agent 的结果交回原编排者。持久化、预算、权限和副作用去重仍要显式设计。
 
 ## 一、Prompt 注入与安全防御
 
@@ -194,6 +208,8 @@ class OutputGuard:
 ---
 
 ## 二、流式响应（Streaming）
+
+Responses 使用有类型的流事件，例如 `response.output_text.delta`、函数参数增量与完成事件；不能套用下文 Chat Completions 的 `choices[0].delta` 解析。客户端应在完成事件后确认状态，并在错误或中断时保留已产生的工具调用记录。收到部分文本不等于任务成功，重连也不应重新执行已经成功的外部操作。结构化输出应校验 schema、拒绝与未完成状态，JSON 可解析不等于业务条件满足。
 
 ### Q5: 为什么 LLM 应用必须使用流式响应？ ⭐
 

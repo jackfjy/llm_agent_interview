@@ -1,6 +1,20 @@
 # 39 - Agent 开发实战
 
+> last_verified: 2026-10-25
+> versions: Responses API；openai==3.37.0 / openai-agents==0.24.0 为配套实验版本；正文在线片段未执行
+> 适用范围：当前 API 路线与既有 Agent 工程原理；旧框架片段保留为历史对照
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [Responses 迁移](https://developers.openai.com/api/docs/guides/migrate-to-responses)、[Assistants 迁移](https://developers.openai.com/api/docs/assistants/migration)、[Agents SDK](https://openai.github.io/openai-agents-python/)
+
 ---
+
+## 当前 API 路线与示例边界
+
+新实践以 **Responses API + 明确的工具执行循环**为主线：模型返回带类型的 Item，工具调用中的 `call_id` 必须与 `function_call_output` 对应。保存完整 `response.output`，不要只保存可见文本，否则会丢失工具调用或推理关联。对话状态可选择自行保存 Item、使用 `previous_response_id`，或使用 Conversations；选择前要考虑数据保留、重试和恢复要求。
+
+Chat Completions **仍受支持**；本章原有 `chat.completions.create` 片段用于说明消息与工具循环，不应误读为已停用。**Assistants API 已于 2026-08-26 下线**，新代码应迁移到 Responses/Conversations。
+
+运行时可选原生 SDK 自行控制循环、OpenAI Agents SDK 或 LangGraph。Agents SDK 默认使用 Responses，提供工具循环、handoff、guardrails、会话与 tracing；它并不自动保证外部操作恰好执行一次。`handoff` 把后续执行权交给目标 Agent，`agent.as_tool()` 则把子 Agent 的结果交回原编排者。持久化、预算、权限和副作用去重仍要显式设计。
 
 ## 一、ReAct 框架
 
@@ -154,6 +168,8 @@ answer = agent.run("Python 3.12 有什么新特性？")
 ---
 
 ## 二、Function Calling / Tool Use
+
+在 Responses 中，一次返回可含多个 `function_call` Item；应逐项解析并按 `call_id` 返回结果。工具错误需要作为可诊断结果交回模型，权限错误或取消不应无限重试。下文消息列表示例采用 Chat Completions 格式，不能把 `tool_call_id` 与 Responses 的 `call_id` 混用。
 
 ### Q4：Function Calling 的工作原理是什么？ ⭐⭐
 

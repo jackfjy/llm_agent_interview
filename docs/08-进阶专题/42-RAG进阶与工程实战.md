@@ -1,5 +1,11 @@
 # 42. RAG 进阶与工程实战
 
+> last_verified: 2026-10-25
+> versions: legacy LangChain v0.x 片段
+> 适用范围：仅补旧 API 兼容提示，其他内容未逐项重核
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [LangChain v1 迁移](https://docs.langchain.com/oss/python/migrate/langchain-v1)、[LangGraph v1 迁移](https://docs.langchain.com/oss/python/migrate/langgraph-v1)
+
 ## 目录
 
 1. [Self-RAG：自我检索增强](#1-self-rag自我检索增强)
@@ -14,6 +20,8 @@
 10. [RAG 评估体系（RAGAS、DeepEval、自定义评估）](#10-rag-评估体系)
 11. [RAG 缓存与性能优化](#11-rag-缓存与性能优化)
 12. [RAG 安全与幻觉防护](#12-rag-安全与幻觉防护)
+
+> 兼容提示：`langchain.chains` / `langchain.retrievers` 属旧版接口；新环境需 `langchain-classic` 及 `langchain_classic.*` 导入，或使用原项目 v0.x 锁文件；新 Agent 入口见第 11/41 章。旧片段未按最新版执行。
 
 ---
 

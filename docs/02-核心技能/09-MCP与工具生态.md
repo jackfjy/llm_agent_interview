@@ -1,5 +1,11 @@
 # 09. MCP 与工具生态
 
+> last_verified: 2026-10-25
+> versions: MCP 2026-07-28；Python mcp==2.3.0 服务端 API；legacy v1 对照
+> 适用范围：规范分代、工具接入和安全；SDK 版本不等于规范日期
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [固定规范变更](https://modelcontextprotocol.io/specification/2026-07-28/changelog)、[授权规范](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)、[Python SDK v2](https://github.com/modelcontextprotocol/python-sdk/releases/tag/v2.0.0)、[A2A 1.0 系列](https://a2a-protocol.org/latest/specification/)
+
 > **难度标记**：⭐ 基础 ⭐⭐ 进阶 ⭐⭐⭐ 高级
 > **热度**：🔥🔥🔥 2025 年最高频新增考点
 
@@ -12,7 +18,7 @@ MCP 与工具生态
 ├── MCP 协议基础 ⭐⭐⭐ 必考
 │   ├── 协议架构（Client-Server-Host）
 │   ├── 核心能力（Tools / Resources / Prompts）
-│   ├── 传输层（stdio / SSE / Streamable HTTP）
+│   ├── 传输层（stdio / Streamable HTTP；区分历史 HTTP+SSE）
 │   └── 与 OpenAI Function Calling 的区别
 ├── 工程实现 ⭐⭐ 进阶
 │   ├── MCP Server 开发
@@ -107,13 +113,13 @@ MCP 采用 **Host → Client → Server** 三层架构：
 
 **Client（客户端）**：
 - 与 MCP Server 建立一对一连接
-- 处理协议协商和能力交换
+- 处理版本选择和能力发现；2026 规范采用逐请求元数据
 - 转发工具调用请求和结果
 
 **Server（服务端）**：
 - 暴露具体的工具（Tools）、资源（Resources）、提示（Prompts）
 - 处理实际的业务逻辑
-- 可以是本地进程（stdio）或远程服务（SSE/HTTP）
+- 可以是本地进程（stdio）或远程服务（Streamable HTTP）
 
 ---
 
@@ -171,234 +177,87 @@ MCP Server 可以暴露三种类型的能力：
 
 ---
 
-### 4. ⭐⭐ Q: MCP 有哪些传输方式？各自适用场景？
+### 4. ⭐⭐ Q: MCP 的传输方式与协议版本有什么关系？
 
-**答**：
+**答**：先说明目标规范，再说明 SDK。不能把“stdio、SSE、Streamable HTTP”视作同一年代的三个并列选项。
 
-MCP 定义了三种传输机制：
+| 规范年代 | 传输与生命周期 | 维护时注意 |
+|---|---|---|
+| 2024-11-05 | stdio；旧 HTTP+SSE 双端点 | 只用于历史兼容 |
+| 2025 系列 | stdio；Streamable HTTP，含 initialize 握手与可选协议会话 | SSE 可以作为响应编码；不是另一套同义传输 |
+| 2026-07-28 | stdio；无协议级会话的 Streamable HTTP | 请求携带版本/能力元数据，使用 server/discover 发现能力；不再先 initialize |
 
-**① stdio（标准输入输出）**
-```
-Host 进程 ←──stdin/stdout──→ MCP Server 子进程
-```
-- 适用：**本地工具**，如文件系统、本地数据库
-- 优点：零网络开销，进程隔离
-- 缺点：仅限单机，每个 Client 独占一个进程
+当前规范删除 `Mcp-Session-Id`，将独立通知流改为 `subscriptions/listen`，长交互可采用 Multi Round-Trip Requests（MRTR）。这不等于应用不能存状态：业务可显式传递服务端生成的句柄。SSE 仍可用于请求范围内的流式响应；旧 HTTP+SSE 被替代不代表 SSE 机制整体不可用。
 
-**② SSE（Server-Sent Events）**
-```
-Client ────HTTP POST───▶ Server（请求）
-Client ◀──SSE Stream──── Server（响应流）
-```
-- 适用：**远程服务**，如 GitHub API、Slack API
-- 优点：支持流式，跨网络
-- 缺点：需要维护长连接，扩展性有限
+2026 规范不提供旧式 SSE 断线续传保证；断流后重新请求时，业务写操作要携带稳定幂等键。协议 request ID 用于关联消息，不能代替业务去重 ID。多版本服务应显式协商/回退，不能从包版本号猜测对端行为。
 
-**③ Streamable HTTP（2025 新增）**
-```
-Client ────HTTP POST───▶ Server
-Client ◀──HTTP Response── Server（支持流式或一次性返回）
-```
-- 适用：**生产环境**，支持无状态和有状态模式
-- 优点：兼容标准 HTTP，支持负载均衡，可恢复会话
-- 缺点：较新，生态支持还在完善
+stdio 适合本地子进程，stdout 只写协议消息，日志写 stderr。远程 Streamable HTTP 适合网关与网络部署，其身份、授权、超时与背压都需要单独设计。
 
 ---
 
 ### 5. ⭐⭐⭐ Q: 如何实现一个 MCP Server？以 Python 为例。
 
-**答**：
+**答**：以下使用已检查可安装的 `mcp==2.3.0` 服务端接口：`MCPServer` 从 `mcp.server` 导入。装饰器和启动签名已核对；本章嵌入片段尚未完成客户端往返验收，不能以文档构建代替互通测试。完整实验应在独立环境锁定依赖，区分 SDK 与协议版本。
 
 ```python
-# server.py — 一个简单的 MCP Server 示例
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
-import json
+# server.py；依赖 mcp==2.3.0
+import math
+from mcp.server import MCPServer
 
-# 1. 创建 Server 实例
-server = Server("my-tool-server")
+server = MCPServer("teaching-tools")
 
-# 2. 定义工具列表
-@server.list_tools()
-async def list_tools():
-    return [
-        Tool(
-            name="calculate",
-            description="执行数学计算",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "expression": {
-                        "type": "string",
-                        "description": "数学表达式，如 '2 + 3 * 4'"
-                    }
-                },
-                "required": ["expression"]
-            }
-        ),
-        Tool(
-            name="get_weather",
-            description="获取城市天气",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "city": { "type": "string", "description": "城市名" }
-                },
-                "required": ["city"]
-            }
-        )
-    ]
+@server.tool()
+def calculate(a: float, b: float, operation: str) -> float:
+    """对两个有限且有界的数字执行 add/multiply。"""
+    if not all(math.isfinite(x) and abs(x) <= 1_000_000 for x in (a, b)):
+        raise ValueError("数字必须有限且绝对值不超过一百万")
+    if operation == "add":
+        return a + b
+    if operation == "multiply":
+        return a * b
+    raise ValueError("只支持 add/multiply")
 
-# 3. 实现工具调用逻辑
-@server.call_tool()
-async def call_tool(name: str, arguments: dict):
-    if name == "calculate":
-        try:
-            result = eval(arguments["expression"])  # 生产环境应使用安全的表达式解析
-            return [TextContent(type="text", text=str(result))]
-        except Exception as e:
-            return [TextContent(type="text", text=f"计算错误: {e}")]
-    
-    elif name == "weather":
-        city = arguments["city"]
-        # 调用天气 API
-        weather = await fetch_weather(city)
-        return [TextContent(type="text", text=json.dumps(weather, ensure_ascii=False))]
-    
-    raise ValueError(f"未知工具: {name}")
-
-# 4. 定义资源（可选）
-@server.list_resources()
-async def list_resources():
-    return [
-        {
-            "uri": "config://app/settings",
-            "name": "应用配置",
-            "mimeType": "application/json"
-        }
-    ]
-
-@server.read_resource()
-async def read_resource(uri: str):
-    if uri == "config://app/settings":
-        return json.dumps({"theme": "dark", "language": "zh"})
-    raise ValueError(f"未知资源: {uri}")
-
-# 5. 启动服务器（stdio 模式）
-async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream)
+@server.tool()
+def get_weather(city: str) -> dict:
+    """返回教学天气 fixture，并非实时天气查询。"""
+    fixtures = {"北京": {"condition": "晴", "temperature_c": 26}}
+    if city not in fixtures:
+        raise ValueError("fixture 只包含北京")
+    return {"city": city, **fixtures[city], "source": "offline-fixture"}
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    server.run(transport="stdio")
 ```
 
-**关键步骤**：
-1. 创建 `Server` 实例
-2. 用 `@server.list_tools()` 注册工具定义
-3. 用 `@server.call_tool()` 实现工具逻辑
-4. 选择传输方式启动（stdio / SSE / HTTP）
+注册名和调用名均为 `get_weather`；调用 `weather` 应被视作未知工具。计算工具接收数值与操作枚举，不执行用户表达式。SDK 生成 schema 不能替代业务校验；部署时仍要检查权限、范围和调用预算。
+
+**legacy v1 对照**：旧 `Server`/`FastMCP`、`ClientSession` 与 `initialize()` 代码属于 v1 兼容路线。若维护旧项目，可使用 `mcp>=1.28,<2` 的独立环境并锁定实际解析版本，不能将这些导入与本节 v2 启动参数拼接。官方 v2.0.0 发布说明已经支持 2026-07-28，但该版本也列出功能缺口，因此不宣称任何 SDK 自动实现全部规范。
 
 ---
 
 ### 6. ⭐⭐⭐ Q: 如何在 Agent 应用中集成 MCP Client？
 
-**答**：
+**答**：客户端负责发现工具和传递结果，模型调用仍属于 Host。按目标 SDK 的文档管理连接生命周期，离开上下文时同时关闭传输与客户端，避免手工调用 `__aenter__()` 后遗留子进程。
 
 ```python
-# client.py — 在 Agent 中使用 MCP Client
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+# client.py；mcp==2.3.0，签名已核对，完整往返测试另见独立实验
+import asyncio
+import sys
+from mcp import Client, StdioServerParameters
 
-class MCPAgent:
-    def __init__(self):
-        self.tools = []      # 从 MCP Server 获取的工具列表
-        self.session = None  # MCP 会话
-    
-    async def connect(self, server_script: str):
-        """连接到 MCP Server"""
-        # 1. 启动 Server 子进程
-        server_params = StdioServerParameters(
-            command="python",
-            args=[server_script]
-        )
-        
-        # 2. 建立连接
-        self.read, self.write = await stdio_client(server_params).__aenter__()
-        self.session = ClientSession(self.read, self.write)
-        await self.session.__aenter__()
-        
-        # 3. 初始化（能力协商）
-        await self.session.initialize()
-        
-        # 4. 发现工具
-        response = await self.session.list_tools()
-        self.tools = response.tools
-        print(f"发现 {len(self.tools)} 个工具: {[t.name for t in self.tools]}")
-    
-    async def run(self, user_query: str):
-        """处理用户查询"""
-        # 1. 将 MCP 工具转换为 LLM 的 function calling 格式
-        llm_tools = self._convert_tools(self.tools)
-        
-        # 2. 调用 LLM
-        response = await call_llm(
-            messages=[{"role": "user", "content": user_query}],
-            tools=llm_tools
-        )
-        
-        # 3. 如果 LLM 选择调用工具
-        if response.tool_calls:
-            for tool_call in response.tool_calls:
-                # 4. 通过 MCP 调用工具
-                result = await self.session.call_tool(
-                    name=tool_call.function.name,
-                    arguments=json.loads(tool_call.function.arguments)
-                )
-                
-                # 5. 将结果返回给 LLM
-                response = await call_llm(
-                    messages=[
-                        {"role": "user", "content": user_query},
-                        {"role": "assistant", "tool_calls": [tool_call]},
-                        {"role": "tool", "content": result.content[0].text}
-                    ],
-                    tools=llm_tools
-                )
-        
-        return response.content
-    
-    def _convert_tools(self, mcp_tools):
-        """将 MCP 工具格式转换为 OpenAI function calling 格式"""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.inputSchema
-                }
-            }
-            for tool in mcp_tools
-        ]
-    
-    async def disconnect(self):
-        """断开连接"""
-        if self.session:
-            await self.session.__aexit__(None, None, None)
-
-# 使用示例
 async def main():
-    agent = MCPAgent()
-    await agent.connect("server.py")
-    
-    result = await agent.run("帮我查一下北京的天气")
-    print(result)
-    
-    await agent.disconnect()
+    params = StdioServerParameters(command=sys.executable, args=["server.py"])
+    async with Client(params) as client:
+        tools = await client.list_tools()
+        print([tool.name for tool in tools.tools])
+        result = await client.call_tool("get_weather", {"city": "北京"})
+        print(result)  # 同时检查错误字段和所有返回内容，不只取第一段文本
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
+
+上述是客户端教学片段，未将签名核对宣称为互通通过。当前规范通过发现与逐请求元数据选择版本，不需添加旧版 `initialize()`。Responses 使用 `call_id`，Chat Completions 使用 `tool_call_id`；不要把 `result.content[0].text` 假设为全部结果，工具可能返回多段文本、结构化内容或错误。不要把协议无会话误读为无需管理网络连接或业务对话状态。
 
 ---
 
@@ -409,34 +268,24 @@ async def main():
 MCP 在多个层面实现安全控制：
 
 **① Host 层权限控制**
-```python
-# Host 可以限制 Client 的能力
-server_params = StdioServerParameters(
-    command="python",
-    args=["server.py"],
-    env={"API_KEY": "***"}  # 注入敏感信息
-)
 
-# Host 可以要求用户确认危险操作
-@server.call_tool()
-async def call_tool(name, arguments):
-    if name in HIGH_RISK_TOOLS:
-        # Host 弹出确认对话框
-        if not await host.confirm(f"确认执行 {name}?"):
-            return [TextContent(type="text", text="用户取消")]
-```
+Host 决定暴露哪些工具、哪些操作需要用户审批，并在执行前校验权限；这些是应用策略，不是服务端可以调用的标准 `host.confirm` RPC。工具提示和返回内容均视作不可信输入。
 
-**② 传输层安全**
-```
-stdio: 本地进程隔离，无网络暴露
-SSE/HTTP: TLS 加密，Token 认证
-```
+**② 传输与授权边界**
+
+- 远程 HTTP 授权是独立可选能力；启用时按 OAuth 2.1、Protected Resource Metadata、授权服务器发现与 scope 校验实现。核对 issuer、resource/audience，不将为别的服务签发的 token 任意透传给下游。
+- stdio 不套用 HTTP OAuth 流程；凭证可由 Host 通过环境等受控机制提供，限制子进程权限，避免日志泄漏。
+- TLS 只保护传输，不等于用户身份与数据访问已获授权。当前授权规范推荐 Client ID Metadata Documents，DCR 属兼容路线；以固定版本规范核对细节。
+
 
 **③ 工具层安全**
+
+以下是应用策略伪代码，`validate_input`、权限上下文和限流器由应用实现，不是 v2 SDK 的可直接运行回调。
+
 ```python
 # 工具实现中的安全措施
-@server.call_tool()
-async def call_tool(name, arguments):
+# 应用层执行包装，伪代码
+async def guarded_dispatch(name, arguments):
     # 1. 输入验证
     validate_input(arguments)
     
@@ -484,7 +333,7 @@ async def call_tool(name, arguments):
 | 范围 | 单次调用 | 单次调用 | 完整生命周期 |
 | 标准化 | 各厂商私有 | 各厂商私有 | 开放标准 |
 | 工具发现 | 手动定义 | 手动定义 | 自动发现 |
-| 状态管理 | 无 | 无 | 支持会话 |
+| 状态管理 | 应用自行管理 | 应用自行管理 | 2026 规范无协议级会话，业务状态显式管理 |
 | 生态 | OpenAI 生态 | Anthropic 生态 | 跨平台 |
 
 **选择策略**：
@@ -833,6 +682,8 @@ MONITORING_METRICS = {
 
 **答**：
 
+本节 A2A 按 **1.0 系列**说明；官方规范与 SDK/release 版本应分别记录。1.0 对对象包装和 `kind` 等字段有破坏性变化，不直接复制早期 JSON；版本按 Major.Minor 协商。长任务需要描述状态、取消请求、鉴权与 Artifact，取消请求不保证已经发生的外部写入被撤销。
+
 两者解决不同层次的问题：
 
 ```
@@ -854,7 +705,7 @@ MONITORING_METRICS = {
 
 | 维度 | MCP | A2A |
 |------|-----|-----|
-| 发布者 | Anthropic | Google |
+| 起源 | Anthropic 发起的开放协议 | Google 发起的开放协议 |
 | 解决问题 | Agent ↔ 工具/数据 | Agent ↔ Agent |
 | 核心概念 | Tools, Resources, Prompts | Agent Card, Task, Artifact |
 | 通信模式 | 请求-响应 | 异步任务，支持长时间运行 |
@@ -875,100 +726,19 @@ MONITORING_METRICS = {
 
 ### 14. ⭐⭐⭐ Q: 如何测试 MCP Server？有哪些测试策略？
 
-**答**：
+**答**：把“本地函数能返回结果”与“真实 SDK 客户端可互通”分开验收。只手写 JSON-RPC 报文不能证明 SDK 配套可用。
 
-```python
-import pytest
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+| 测试层 | 必须检查的行为 |
+|---|---|
+| 纯工具逻辑 | calculate 的 add/multiply、有限数值、越界输入、非法操作；天气 fixture 的城市范围 |
+| SDK stdio 往返 | 子进程启动、工具发现、以 get_weather 注册名调用、参数与返回内容；退出后释放资源 |
+| 错误语义 | 未知工具/非法参数；区分协议错误与工具执行失败，不假定总会抛 Python 异常 |
+| 故障与预算 | 超时、子进程退出、重试上限、取消、重复写入去重 |
+| 版本兼容 | 当前规范与明确保留的旧客户端环境分别运行，不能把旧 initialize 测试标为当前规范 |
 
-class TestMCPServer:
-    """MCP Server 测试套件"""
-    
-    @pytest.fixture
-    async def session(self):
-        """创建测试会话"""
-        params = StdioServerParameters(
-            command="python",
-            args=["server.py"]
-        )
-        async with stdio_client(params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                yield session
-    
-    # 1. 工具发现测试
-    async def test_list_tools(self, session):
-        """测试工具列表是否正确"""
-        result = await session.list_tools()
-        assert len(result.tools) > 0
-        
-        tool_names = [t.name for t in result.tools]
-        assert "create_issue" in tool_names
-        assert "search" in tool_names
-    
-    # 2. 工具 Schema 验证
-    async def test_tool_schema(self, session):
-        """测试工具 Schema 是否合法"""
-        result = await session.list_tools()
-        for tool in result.tools:
-            assert tool.inputSchema.get("type") == "object"
-            assert "properties" in tool.inputSchema
-    
-    # 3. 正常调用测试
-    async def test_call_tool_success(self, session):
-        """测试正常工具调用"""
-        result = await session.call_tool(
-            "calculate",
-            {"expression": "2 + 3"}
-        )
-        assert result.content[0].text == "5"
-    
-    # 4. 错误处理测试
-    async def test_call_tool_invalid_input(self, session):
-        """测试无效输入"""
-        with pytest.raises(Exception):
-            await session.call_tool(
-                "calculate",
-                {"expression": "invalid"}
-            )
-    
-    # 5. 未知工具测试
-    async def test_call_unknown_tool(self, session):
-        """测试调用不存在的工具"""
-        with pytest.raises(Exception):
-            await session.call_tool("nonexistent_tool", {})
-    
-    # 6. 资源读取测试
-    async def test_read_resource(self, session):
-        """测试资源读取"""
-        result = await session.read_resource("config://app/settings")
-        assert "theme" in result.contents[0].text
-    
-    # 7. 性能测试
-    async def test_tool_latency(self, session):
-        """测试工具调用延迟"""
-        import time
-        start = time.time()
-        await session.call_tool("calculate", {"expression": "1+1"})
-        latency = time.time() - start
-        assert latency < 1.0  # 延迟应小于 1 秒
-    
-    # 8. 并发测试
-    async def test_concurrent_calls(self, session):
-        """测试并发调用"""
-        import asyncio
-        tasks = [
-            session.call_tool("calculate", {"expression": f"{i}+1}"})
-            for i in range(10)
-        ]
-        results = await asyncio.gather(*tasks)
-        assert len(results) == 10
-```
+性能阈值由环境基线确定，报告 P50/P95、负载与样本数；不要把“本地应小于 100ms”写成协议保证。远程授权需额外验证错误 audience、失效 token 和最小 scope。未启动真实客户端时只记录静态检查，不能记录“互通通过”。
 
 ---
-
-## 四、实战难题
 
 ### 15. ⭐⭐⭐ Q: 如何设计一个支持多 MCP Server 的 Agent 框架？
 
@@ -1213,93 +983,30 @@ class MCPToolCache:
 
 ### 18. ⭐⭐⭐ Q: MCP Server 如何做版本管理和向后兼容？
 
-**答**：
+**答**：区分三种版本：规范日期、SDK 包版本、业务工具 schema 版本。2026 的逐请求版本元数据属于协议；业务参数 `schema_version` 不能替代它，也不应伪造一个 SDK 不存在的 `protocol_version` 回调参数。
 
-```python
-from enum import Enum
+- 规范兼容：通过发现与版本元数据选择支持的协议；旧规范回退由兼容实现处理，不混用握手。
+- SDK 兼容：锁定并实际运行客户端/服务端组合，记录缺失能力；升级 SDK 后重新做往返测试。
+- 工具兼容：新增可选参数保持原默认语义；破坏性变更可另命名 `search_v2`，给迁移期，不静默选择“最近”行为。
+- 状态兼容：2026 工具列表不按连接变化。权限仍需在每次执行时校验，不能依赖曾经发现过工具就放行。
 
-class ToolVersion(Enum):
-    V1 = "1.0"
-    V2 = "2.0"
-
-# 工具版本管理
-TOOLS_V1 = {
-    "name": "search",
-    "description": "搜索文档",
-    "inputSchema": {
-        "properties": {
-            "query": {"type": "string"}
-        }
-    }
+```json
+{
+  "name": "search_v2",
+  "description": "关键词或语义检索；需要调用时权限校验",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {"type": "string"},
+      "mode": {"type": "string", "enum": ["keyword", "semantic"]}
+    },
+    "required": ["query", "mode"],
+    "additionalProperties": false
+  }
 }
-
-TOOLS_V2 = {
-    "name": "search",
-    "description": "搜索文档（支持语义搜索）",
-    "inputSchema": {
-        "properties": {
-            "query": {"type": "string"},
-            "mode": {
-                "type": "string",
-                "enum": ["keyword", "semantic", "hybrid"],
-                "description": "搜索模式，默认 hybrid"
-            },
-            "filters": {
-                "type": "object",
-                "properties": {
-                    "date_range": {"type": "string"},
-                    "doc_type": {"type": "string"}
-                }
-            }
-        }
-    }
-}
-
-class VersionedMCPServer:
-    """支持版本管理的 MCP Server"""
-    
-    def __init__(self):
-        self.versions = {
-            "1.0": {"search": self._search_v1},
-            "2.0": {"search": self._search_v2},
-        }
-        self.current_version = "2.0"
-    
-    @server.list_tools()
-    async def list_tools(self, protocol_version: str = None):
-        """根据协议版本返回工具列表"""
-        version = protocol_version or self.current_version
-        
-        if version.startswith("1."):
-            return [TOOLS_V1]
-        else:
-            return [TOOLS_V2]
-    
-    @server.call_tool()
-    async def call_tool(self, name: str, arguments: dict, protocol_version: str = None):
-        version = protocol_version or self.current_version
-        
-        handler = self.versions.get(version, {}).get(name)
-        if not handler:
-            # 降级到最近的兼容版本
-            handler = self._find_compatible_handler(name, version)
-        
-        return await handler(arguments)
-    
-    async def _search_v1(self, args):
-        """V1 搜索（关键词）"""
-        return keyword_search(args["query"])
-    
-    async def _search_v2(self, args):
-        """V2 搜索（支持语义）"""
-        mode = args.get("mode", "hybrid")
-        if mode == "semantic":
-            return semantic_search(args["query"])
-        elif mode == "keyword":
-            return keyword_search(args["query"])
-        else:
-            return hybrid_search(args["query"], args.get("filters"))
 ```
+
+该 JSON 为业务 schema 示意，不是完整 RPC 信封；不要以此冒充协议或 SDK 验收。
 
 ---
 
@@ -1317,7 +1024,7 @@ class VersionedMCPServer:
 
 | 指标 | 参考值 |
 |------|--------|
-| MCP 工具调用延迟 | <100ms (本地 stdio), <500ms (远程 SSE) |
+| MCP 工具调用延迟 | 按部署环境实测 P50/P95，协议不保证固定延迟 |
 | 工具描述长度 | 建议 50-200 字 |
 | 重试次数 | 2-3 次，指数退避 |
 | 缓存 TTL | 静态 1h, 半静态 5min, 实时不缓存 |

@@ -1,6 +1,12 @@
 # 11. LangChain 与 LangGraph
 
-> **Agent 开发主流框架**：LangChain 生态最大，LangGraph 是复杂 Agent 的首选
+> last_verified: 2026-10-25
+> versions: LangChain v1；LangGraph v1；legacy 独立标记
+> 适用范围：组件原理与 v1 Agent 主线；其他长片段不构成统一安装环境
+> example_status: 正文为教学片段或伪代码，未逐段执行；不等同于可运行项目验收。
+> sources: [LangChain v1 迁移](https://docs.langchain.com/oss/python/migrate/langchain-v1)、[LangGraph v1 迁移](https://docs.langchain.com/oss/python/migrate/langgraph-v1)
+
+> **学习重点**：区分组件、Agent 工厂与图运行时，按持久化和控制流需求选型
 
 ---
 
@@ -23,7 +29,7 @@ LangChain 核心组件：
 │   └── FewShotPromptTemplate —— 少样本模板
 │
 ├── Chains（链）
-│   ├── LLMChain —— 基础链
+│   ├── LLMChain —— 历史组件，现位于 langchain-classic
 │   ├── SequentialChain —— 顺序链
 │   └── RouterChain —— 路由链
 │
@@ -180,64 +186,44 @@ print(result["sources"])  # 检索到的文档
 
 ---
 
-### 4. ⭐⭐⭐ Q: LangChain 的 Tool 和 Agent 怎么实现？
+### 4. ⭐⭐⭐ Q: LangChain v1 的 Tool 和 Agent 怎么实现？
 
-**答**：
+**答**：新代码使用 `langchain.agents.create_agent`，它基于 LangGraph 运行时。下例为 v1 教学片段，未在线执行；模型集成包与主包应分别锁定版本，不能把本片段当作锁文件。
 
 ```python
-from langchain_core.tools import tool
+import math
+from langchain.agents import create_agent
+from langchain.tools import tool
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-
-# 1. 定义工具
-@tool
-def search_web(query: str) -> str:
-    """搜索互联网获取最新信息"""
-    results = web_search(query)
-    return "\n".join(results)
 
 @tool
-def calculate(expression: str) -> str:
-    """计算数学表达式"""
-    try:
-        result = eval(expression)  # 生产环境应使用安全的表达式解析
-        return str(result)
-    except Exception as e:
-        return f"计算错误: {e}"
+def calculate(a: float, b: float, operation: str) -> float:
+    """对两个有界数字做 add 或 multiply 运算。"""
+    if not all(math.isfinite(x) and abs(x) <= 1_000_000 for x in (a, b)):
+        raise ValueError("数字必须有限且绝对值不超过一百万")
+    if operation == "add":
+        return a + b
+    if operation == "multiply":
+        return a * b
+    raise ValueError("只支持 add/multiply")
 
-@tool
-def get_weather(city: str) -> str:
-    """获取指定城市的天气信息"""
-    weather_data = fetch_weather(city)
-    return f"{city}天气: {weather_data['condition']}, 温度: {weather_data['temp']}°C"
-
-# 2. 创建 Agent
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
-tools = [search_web, calculate, get_weather]
-
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "你是一个有用的助手，可以使用工具来回答问题。"),
-    ("human", "{input}"),
-    ("placeholder", "{agent_scratchpad}"),
-])
-
-agent = create_tool_calling_agent(llm, tools, prompt)
-
-# 3. 创建 Agent 执行器
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    verbose=True,
-    max_iterations=5,
-    handle_parsing_errors=True,
+agent = create_agent(
+    model=ChatOpenAI(model="gpt-4o"),  # 模型 ID 仅示例，调用前确认账户可用性
+    tools=[calculate],
+    system_prompt="使用计算工具回答；不要编造工具结果。",
 )
-
-# 4. 运行
-result = agent_executor.invoke({
-    "input": "北京今天天气怎么样？如果温度超过30度，帮我计算开空调8小时的电费（每度电0.5元，空调功率1.5kW）"
-})
-print(result["output"])
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "计算 8 乘 1.5，再乘 0.5"}]},
+    config={"recursion_limit": 20},
+)
+print(result["messages"][-1].content)
 ```
+
+`recursion_limit` 是运行图的防护上限，不能直接等同旧 `max_iterations` 的工具轮数；生产环境还需独立的时间、费用、失败次数预算。
+
+v1 的 middleware 承担模型调用前后处理、动态模型选择和工具错误包装；旧 `pre_model_hook` 等配置应按迁移指南逐项转换。结构化输出通过 `response_format` 配合 `ProviderStrategy` 或 `ToolStrategy`，最终读取 `structured_response`，不能只提示“请输出 JSON”。需要明确校验失败、重试与拒答策略。
+
+**legacy 对照**：`AgentExecutor`、旧 `create_tool_calling_agent` 及旧 chains/retrievers 属于历史接口。维护旧项目时可使用独立环境的 `langchain-classic`（导入 `langchain_classic.agents` 等），或复原项目原来的 v0.3 锁文件；不要将旧导入与未限定的最新版安装混用。
 
 ---
 
@@ -1212,22 +1198,18 @@ robust_chain = prompt | model_with_fallback | StrOutputParser()
 
 ## LangChain vs LangGraph vs CrewAI 对比
 
-### 架构对比表
+### 组件与运行时对比
 
-| 维度 | LangChain | LangGraph | CrewAI |
-|------|-----------|-----------|--------|
-| **核心抽象** | Chain（链） | Graph（状态图） | Agent + Task + Crew |
-| **控制流** | 线性管道（LCEL） | 任意图（含循环） | 顺序/并行/层级 |
-| **状态管理** | 隐式（Memory） | 显式（TypedDict + Reducer） | 隐式（内置 Memory） |
-| **多 Agent** | 需手动编排 | 图中多节点 | 原生支持（角色分工） |
-| **人工介入** | 回调方式 | interrupt_before/after | 无原生支持 |
-| **持久化** | 无原生支持 | Checkpointing（SQLite/PG） | 内置 Memory |
-| **可视化** | 困难 | Mermaid/Graphviz 导出 | 无 |
-| **学习曲线** | 中 | 高（需理解图概念） | 低（声明式） |
-| **生态** | 最大（集成多） | 同 LangChain 生态 | 独立生态 |
-| **适用规模** | 中小 | 大（生产级） | 中小 |
-| **流式支持** | LCEL 原生 | 原生（含 token 级） | 有限 |
-| **调试能力** | LangSmith | LangSmith + 图可视化 | 内置 verbose |
+| 关注点 | LangChain v1 | LangGraph v1 |
+|---|---|---|
+| 抽象 | 模型/工具组件与 create_agent | 显式状态图、节点与边 |
+| 关系 | create_agent 构建在 LangGraph 之上 | 可直接实现自定义控制流 |
+| 状态与恢复 | 可配置其图运行时的 checkpoint | 显式配置 checkpointer、线程 ID 与恢复 |
+| 人工审批 | 可结合 middleware 与底层图机制 | 使用 interrupt/resume 等机制 |
+| 选择依据 | 先用标准 Agent 循环覆盖需求 | 需要自定义分支、重放、子图或审批控制 |
+
+CrewAI 的角色/任务抽象是另一条选择，具体能力应按所选 release 核验；不宣称某一框架“唯一支持”持久化或人工介入。内存 checkpoint 不等于耐进程重启，tracing 也不等于业务任务成功。
+
 
 ### 适用场景
 
@@ -1238,22 +1220,22 @@ robust_chain = prompt | model_with_fallback | StrOutputParser()
    → LangChain（LCEL 链即可）
 
 2. 单 Agent + 工具调用
-   → LangChain AgentExecutor 或 LangGraph
+   → LangChain v1 create_agent 或 LangGraph
 
 3. 复杂多步推理 Agent（需循环/分支）
-   → LangGraph（唯一选择）
+   → LangGraph 或显式自建运行时（比较维护成本）
 
 4. 需要人工审批的流程
    → LangGraph（interrupt 机制）
 
 5. 多角色协作（如：研究员+写手+编辑）
-   → CrewAI（最简单）或 LangGraph（更灵活）
+   → CrewAI（角色/任务抽象）或 LangGraph（更灵活）
 
 6. 生产级部署 + 可观测性
    → LangGraph + LangSmith
 
 7. 快速原型 / MVP
-   → CrewAI（最快上手）
+   → 按团队经验选择组件与运行时
 
 8. 自定义复杂工作流
    → LangGraph（子图 + 条件边 + 持久化）
@@ -1283,13 +1265,13 @@ robust_chain = prompt | model_with_fallback | StrOutputParser()
 # LangGraph 中使用 LangChain 组件
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 llm = ChatOpenAI(model="gpt-4o")
 tools = [search_tool, calculator_tool]
 
-# 一行代码创建 ReAct Agent（LangGraph 预构建）
-agent = create_react_agent(llm, tools)
+# LangChain v1 Agent（下列 search_tool 等由应用提供，非独立脚本）
+agent = create_agent(model=llm, tools=tools)
 result = agent.invoke({"messages": [HumanMessage(content="...")]})
 
 # CrewAI Agent 包装为 LangGraph 节点
@@ -1306,6 +1288,6 @@ graph.add_edge("crew_research", "human_review")
 
 **总结**：
 - **LangChain**：基础设施层，提供模型/工具/检索等组件
-- **LangGraph**：编排层，处理复杂控制流，生产级 Agent 首选
-- **CrewAI**：应用层，多角色协作场景最快落地
+- **LangGraph**：编排层，处理复杂控制流，提供显式控制流与持久化机制
+- **CrewAI**：应用层，角色与任务协作抽象
 - 三者不互斥，可在同一项目中混合使用
