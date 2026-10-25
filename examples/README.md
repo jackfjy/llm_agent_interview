@@ -15,7 +15,7 @@ python -m examples.reliable_agent.demo
 python -m examples.evaluation.run --repeats 3 --output examples/.state/evaluation.json
 ```
 
-本次完整 SDK 环境运行 33 项测试全部通过、0 跳过；纯标准库环境运行同一套 33 项测试，29 项通过、4 个可选 SDK 测试明确跳过。测试包含 40 个回归输入的重复执行。不要把 `skipped` 当作 SDK 验证通过。
+本次完整 SDK 环境运行 37 项测试全部通过、0 跳过；纯标准库环境运行同一套 37 项测试，33 项通过、4 个可选 SDK 测试明确跳过。测试包含 40 个回归输入的重复执行。不要把 `skipped` 当作 SDK 验证通过。
 
 安装 SDK 环境后，用同一个解释器重跑全部测试和真实 MCP 往返：
 
@@ -84,7 +84,7 @@ pending → waiting_approval → running → completed
 
 这里的外部副作用就是 `deliveries` 表中新增一条投递记录。去重成立依赖于外部服务对“幂等键 + 副作用”的原子保证、持久保留收据，以及恢复时能查询该收据。**不能把这个示例泛化成任意外部工具的 exactly-once**：普通发邮件接口若没有这样的协议，本地 checkpoint 本身无法消除不确定窗口。真实系统还要处理幂等键过期、外部查询失败、补偿、认证和多 worker 竞争；本例只支持单 worker。
 
-取消在启动前和每次工具返回后检查，阻止后续调用；它不能撤销已经提交的投递。超时由此模拟服务协作执行：等待至给定 timeout 后抛出 `TimeoutError`，整体 `time_budget` 会截短最后一次调用。它不是可以强行打断任意 Python 函数的通用超时器。正常返回时按实际耗时记账；崩溃时保留已预留的最长时间，预算采取保守估计。trace 记录审批、取消、尝试、超时、预算耗尽、完成和恢复。
+取消在启动前、查询外部收据后、实际调度前和每次工具返回后检查，阻止后续调用。状态写入在 SQLite 事务内检查当前终态，旧快照不能把已取消任务重新写成运行、完成或失败；它不能撤销已经提交的投递。调用前最后一次检查之后到达的取消仍按在途调用处理，不能与远程副作用建立跨系统原子取消。超时由此模拟服务协作执行：等待至给定 timeout 后抛出 `TimeoutError`，整体 `time_budget` 会截短最后一次调用。它不是可以强行打断任意 Python 函数的通用超时器。正常返回时按实际耗时记账；崩溃时保留已预留的最长时间，预算采取保守估计。trace 记录审批、取消、尝试、超时、预算耗尽、完成和恢复。
 
 ### 三种可选 SDK 适配
 
@@ -121,7 +121,7 @@ pending → waiting_approval → running → completed
 
 后两个是本次重复试验的**观测值**，并未用 40 条不同任务伪装成同一任务的 40 次采样。只有在每次独立同分布、单次成功率为 p 时，理论值才分别为 `1-(1-p)^k` 和 `p^k`；这个确定性小实验不支持估计真实模型的独立成功概率。另有混合成败测试，验证 any/all 指标不会混淆。
 
-全通过预期：`case_count=40`、`trial_count=120`、`passed_trials=120`、`pass_at_k=1`、`pass_power_k=1`、`agent_completed_trials=15`、`agent_trials=36`。预算字段 `tool_attempts` / `cost_units` 表示 Agent 实际发起调用数及模拟成本，`charged_tool_seconds` 包含崩溃后保留的保守时间预留，不是精确性能基准。输出文件和 SQLite 状态放在已忽略的 `examples/.state/`，demo 使用临时目录并自动清理。
+全通过预期：`case_count=40`、`trial_count=120`、`passed_trials=120`、`pass_at_k=1`、`pass_power_k=1`、`agent_completed_trials=15`、`agent_trials=36`。预算字段 `tool_attempts` / `cost_units` 表示 Agent 已预留尝试数及模拟成本；预留后、调度前取消也保留这笔预算，因此不等于真正发出的调用数。`charged_tool_seconds` 包含崩溃后保留的保守时间预留，不是精确性能基准。输出文件和 SQLite 状态放在已忽略的 `examples/.state/`，demo 使用临时目录并自动清理。
 
 ## 来源与验证边界
 

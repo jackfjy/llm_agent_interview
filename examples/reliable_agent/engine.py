@@ -97,8 +97,17 @@ class AgentRuntime:
         return json.loads(row[0])
 
     def _save(self, state):
+        # A read followed by an unconditional UPDATE can revive cancelled work.
+        # Serialize the check and transition, including completion/recovery writes.
         with database(self.path) as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT state FROM tasks WHERE id=?', (state['id'],)).fetchone()
+            if row is None:
+                raise KeyError(state['id'])
+            if json.loads(row[0])['status'] in ('completed', 'failed', 'cancelled'):
+                return False
             db.execute('UPDATE tasks SET state=? WHERE id=?', (json.dumps(state), state['id']))
+        return True
 
     def _event(self, task_id, event, detail=''):
         with database(self.path) as db:
@@ -114,15 +123,15 @@ class AgentRuntime:
         if state['status'] not in ('pending', 'waiting_approval'):
             raise ValueError('task cannot be approved in its current state')
         state['approved'] = True
-        self._save(state)
-        self._event(task_id, 'approved')
+        if self._save(state):
+            self._event(task_id, 'approved')
 
     def cancel(self, task_id):
         state = self.state(task_id)
         if state['status'] not in ('completed', 'failed', 'cancelled'):
             state['status'] = 'cancelled'
-            self._save(state)
-            self._event(task_id, 'cancelled')
+            if self._save(state):
+                self._event(task_id, 'cancelled')
 
     def run(self, task_id, *, crash_after_effect=False):
         while True:
@@ -131,21 +140,27 @@ class AgentRuntime:
                 return state
             if not state['approved']:
                 state['status'] = 'waiting_approval'
-                self._save(state)
+                if not self._save(state):
+                    return self.state(task_id)
                 self._event(task_id, 'waiting_approval')
                 return state
             # Reconcile an uncertain result BEFORE checking retry budgets.
             receipt = self.service.lookup(state['operation_id'], state['payload'])
+            state = self.state(task_id)
+            if state['status'] in ('completed', 'failed', 'cancelled'):
+                return state
             if receipt is not None:
                 state.update(status='completed', result=receipt)
-                self._save(state)
+                if not self._save(state):
+                    return self.state(task_id)
                 self._event(task_id, 'recovered')
                 return state
             remaining = state['time_budget'] - state['time_spent']
             if (state['attempts'] >= state['max_attempts'] or remaining <= 0
                     or state['cost_spent'] + 1 > state['cost_budget']):
                 state['status'] = 'failed'
-                self._save(state)
+                if not self._save(state):
+                    return self.state(task_id)
                 self._event(task_id, 'budget_exhausted')
                 return state
             allotted = min(state['timeout'], remaining)
@@ -153,9 +168,12 @@ class AgentRuntime:
                          cost_spent=state['cost_spent'] + 1,
                          time_spent=state['time_spent'] + allotted)
             # Reserve attempts, cost units and worst-case time BEFORE crossing the boundary.
-            self._save(state)
+            if not self._save(state):
+                return self.state(task_id)
             self._event(task_id, 'attempt', state['operation_id'])
             started = time.monotonic()
+            if self.state(task_id)['status'] == 'cancelled':
+                return self.state(task_id)
             try:
                 receipt = self.service.execute(state['operation_id'], state['payload'], timeout=allotted)
             except (TimeoutError, ConnectionError) as exc:
@@ -163,7 +181,8 @@ class AgentRuntime:
                 # Preserve cancellation arriving while a cooperative tool is in progress.
                 if self.state(task_id)['status'] == 'cancelled':
                     return self.state(task_id)
-                self._save(state)
+                if not self._save(state):
+                    return self.state(task_id)
                 self._event(task_id, 'timeout' if isinstance(exc, TimeoutError) else 'retry', str(exc))
                 continue
             if crash_after_effect:
@@ -172,6 +191,7 @@ class AgentRuntime:
                 return self.state(task_id)
             state.update(status='completed', result=receipt,
                          time_spent=state['time_spent'] + time.monotonic() - started - allotted)
-            self._save(state)
+            if not self._save(state):
+                return self.state(task_id)
             self._event(task_id, 'completed')
             return state

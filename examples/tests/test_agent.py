@@ -109,3 +109,70 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(self.agent.run('a')['status'], 'cancelled')
         self.assertEqual(self.agent.run('a')['attempts'], 1)
         self.assertEqual(self.service.count(), 1)
+
+    def test_cancellation_during_reconciliation_prevents_dispatch(self):
+        runtime = self.agent
+        class CancellingLookupService(ExternalService):
+            cancelled_once = False
+
+            def lookup(self, *args):
+                receipt = super().lookup(*args)
+                if not self.cancelled_once:
+                    self.cancelled_once = True
+                    runtime.cancel('a')
+                return receipt
+        self.agent.service = CancellingLookupService(self.remote)
+        self.agent.create('a', 'ship book', approved=True)
+        result = self.agent.run('a')
+        self.assertEqual(result['status'], 'cancelled')
+        self.assertEqual(result['attempts'], 0)
+        self.assertEqual(self.service.count(), 0)
+        self.assertEqual([e['event'] for e in self.agent.trace('a')], ['created', 'cancelled'])
+
+    def test_cancellation_during_receipt_lookup_is_not_revived_as_completed(self):
+        self.agent.create('a', 'ship book', approved=True)
+        self.service.execute('a:deliver:v1', 'ship book', timeout=1)
+        runtime = self.agent
+        class CancellingLookupService(ExternalService):
+            def lookup(self, *args):
+                receipt = super().lookup(*args)
+                runtime.cancel('a')
+                return receipt
+        self.agent.service = CancellingLookupService(self.remote)
+        result = self.agent.run('a')
+        self.assertEqual(result['status'], 'cancelled')
+        self.assertEqual(self.service.count(), 1)
+        self.assertNotIn('recovered', [e['event'] for e in self.agent.trace('a')])
+
+    def test_stale_transition_cannot_overwrite_cancellation(self):
+        for transition, approved, failures, expected_effects in [
+            ('running', True, 0, 0), ('completed', True, 0, 1),
+            ('failed', True, 1, 0), ('waiting_approval', False, 0, 0),
+        ]:
+            with self.subTest(transition=transition):
+                class CancellingRuntime(AgentRuntime):
+                    def _save(runtime, state):
+                        if state['status'] == transition:
+                            runtime.cancel(state['id'])
+                        return super()._save(state)
+                service = ExternalService(Path(self.tmp.name) / f'{transition}-external.db',
+                                          failures_left=failures)
+                runtime = CancellingRuntime(Path(self.tmp.name) / f'{transition}-local.db', service)
+                runtime.create('a', 'ship book', approved=approved, max_attempts=1)
+                self.assertEqual(runtime.run('a')['status'], 'cancelled')
+                self.assertEqual(runtime.state('a')['status'], 'cancelled')
+                self.assertEqual(service.count(), expected_effects)
+                self.assertEqual(runtime.trace('a')[-1]['event'], 'cancelled')
+
+    def test_cancellation_after_reservation_is_checked_before_dispatch(self):
+        class CancellingRuntime(AgentRuntime):
+            def _event(runtime, task_id, event, detail=''):
+                super()._event(task_id, event, detail)
+                if event == 'attempt':
+                    runtime.cancel(task_id)
+        runtime = CancellingRuntime(self.local, self.service)
+        runtime.create('a', 'ship book', approved=True)
+        result = runtime.run('a')
+        self.assertEqual(result['status'], 'cancelled')
+        self.assertEqual(result['attempts'], 1)  # Reserved, but not dispatched.
+        self.assertEqual(self.service.count(), 0)
