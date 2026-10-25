@@ -8,22 +8,26 @@
 
 ## 目录
 
-1. [Self-RAG：自我检索增强](#1-self-rag自我检索增强)
-2. [CRAG：校正性检索增强](#2-crag校正性检索增强)
-3. [Query Transformation（查询改写、分解、HyDE、Step-back）](#3-query-transformation)
-4. [Contextual Compression（上下文压缩）](#4-contextual-compression上下文压缩)
-5. [Parent-Child Chunk 检索策略](#5-parent-child-chunk-检索策略)
-6. [Sentence Window 检索](#6-sentence-window-检索)
-7. [Reranking 深入（Cross-Encoder、ColBERT）](#7-reranking-深入)
-8. [Multimodal RAG（图文混合 RAG）](#8-multimodal-rag图文混合-rag)
-9. [生产级 RAG 架构设计](#9-生产级-rag-架构设计)
-10. [RAG 评估体系（RAGAS、DeepEval、自定义评估）](#10-rag-评估体系)
-11. [RAG 缓存与性能优化](#11-rag-缓存与性能优化)
-12. [RAG 安全与幻觉防护](#12-rag-安全与幻觉防护)
+1. [Self-RAG：自我检索增强](#_1-self-rag-自我检索增强)
+2. [CRAG：校正性检索增强](#_2-crag-校正性检索增强)
+3. [Query Transformation（查询改写、分解、HyDE、Step-back）](#_3-query-transformation)
+4. [Contextual Compression（上下文压缩）](#_4-contextual-compression-上下文压缩)
+5. [Parent-Child Chunk 检索策略](#_5-parent-child-chunk-检索策略)
+6. [Sentence Window 检索](#_6-sentence-window-检索)
+7. [Reranking 深入（Cross-Encoder、ColBERT）](#_7-reranking-深入)
+8. [Multimodal RAG（图文混合 RAG）](#_8-multimodal-rag-图文混合-rag)
+9. [生产级 RAG 架构设计](#_9-生产级-rag-架构设计)
+10. [RAG 评估体系（RAGAS、DeepEval、自定义评估）](#_10-rag-评估体系)
+11. [RAG 缓存与性能优化](#_11-rag-缓存与性能优化)
+12. [RAG 安全与幻觉防护](#_12-rag-安全与幻觉防护)
 
 > 兼容提示：`langchain.chains` / `langchain.retrievers` 属旧版接口；新环境需 `langchain-classic` 及 `langchain_classic.*` 导入，或使用原项目 v0.x 锁文件；新 Agent 入口见第 11/41 章。旧片段未按最新版执行。
 
 ---
+
+### 可运行练习：不要把引用当作证据充分
+
+[企业知识库实验](../实战实验室/企业知识库.md) 验证权限、版本替换、删除与无共同词项拒答；候选分数可解释。引用可追溯不等于回答充分，生产系统应分开评估召回、主张支撑和撤权后泄漏。延伸 [RAG 场景题](../实战实验室/场景题40.md#rag6题)。
 
 ## 1. Self-RAG：自我检索增强
 

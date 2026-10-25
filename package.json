@@ -1,7 +1,7 @@
 {
   "name": "llm_agent_interview",
   "version": "1.0.0",
-  "description": "LLM 应用 & Agent 开发 · 面试题与实战难题全集",
+  "description": "LLM 与 Agent 学习笔记、可复现实验和场景练习",
   "private": true,
   "scripts": {
     "dev": "vitepress dev docs",
@@ -10,16 +10,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dirjaker/llm_agent_interview.git"
+    "url": "git+https://github.com/jackfjy/llm_agent_interview.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "dirjaker (original author); jackfjy (fork maintenance)",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dirjaker/llm_agent_interview/issues"
+    "url": "https://github.com/jackfjy/llm_agent_interview/issues"
   },
-  "homepage": "https://github.com/dirjaker/llm_agent_interview#readme",
+  "homepage": "https://github.com/jackfjy/llm_agent_interview/tree/codex/refresh-2026-10",
   "devDependencies": {
-    "vitepress": "^1.6.4"
+    "vitepress": "1.6.4"
   }
 }

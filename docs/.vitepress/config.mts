@@ -3,18 +3,32 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   base: '/llm_agent_interview/',
   title: 'LLM & Agent 面试题全集',
-  description: '47 个专题 · 600+ 面试题 · LLM 应用 & Agent 开发 · 面试题与实战难题全集',
+  description: '47 个编号专题 · 3 个可复现实验 · 40 道场景练习',
   lang: 'zh-CN',
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
+      { text: '实战实验室', link: '/实战实验室/' },
       { text: '基础知识', link: '/01-基础知识/01-Python高级编程' },
       { text: '核心技能', link: '/02-核心技能/04-Prompt工程' },
       { text: '生产实战', link: '/05-生产实战/20-生产环境实战' },
       { text: '工具箱', link: '/工具箱/CHEATSHEET' },
-      { text: 'GitHub', link: 'https://github.com/dirjaker/llm_agent_interview' }
+      { text: 'GitHub', link: 'https://github.com/jackfjy/llm_agent_interview/tree/codex/refresh-2026-10' }
     ],
     sidebar: [
+      {
+        text: '实战实验室',
+        collapsed: false,
+        items: [
+          { text: '实验入口', link: '/实战实验室/' },
+          { text: '企业知识库', link: '/实战实验室/企业知识库' },
+          { text: '可靠工具 Agent', link: '/实战实验室/可靠工具Agent' },
+          { text: 'MCP 工具服务', link: '/实战实验室/MCP工具服务' },
+          { text: '场景题 40', link: '/实战实验室/场景题40' },
+          { text: '岗位学习路线', link: '/实战实验室/学习路线' },
+          { text: '维护规则', link: '/实战实验室/维护规则' }
+        ]
+      },
       {
         text: '🟢 Phase 1 · 基础知识',
         collapsed: false,
@@ -133,9 +147,9 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: '面试速查表', link: '/工具箱/CHEATSHEET' },
-          { text: 'Top50 高频题', link: '/工具箱/TOP50-高频题' },
+          { text: 'Top50 概念复习', link: '/工具箱/TOP50-高频题' },
           { text: '术语表 (Glossary)', link: '/工具箱/GLOSSARY' },
-          { text: '公司面试风格', link: '/工具箱/COMPANY-MAP' },
+          { text: '公司经验笔记', link: '/工具箱/COMPANY-MAP' },
           { text: '调试场景集', link: '/工具箱/DEBUG-SCENARIOS' },
           { text: '系统设计模板', link: '/工具箱/SYSTEM-DESIGN-TEMPLATES' },
           { text: '项目展示框架', link: '/工具箱/PROJECT-SHOWCASE' },
@@ -145,14 +159,14 @@ export default defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/dirjaker/llm_agent_interview' }
+      { icon: 'github', link: 'https://github.com/jackfjy/llm_agent_interview/tree/codex/refresh-2026-10' }
     ],
     search: {
       provider: 'local'
     },
     footer: {
       message: 'LLM 应用 & Agent 开发面试准备',
-      copyright: '© 2026 dirjaker'
+      copyright: '原作者 dirjaker · fork 维护 jackfjy · MIT'
     }
   }
 })

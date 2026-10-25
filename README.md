@@ -1,151 +1,58 @@
-<div align="center">
+# LLM & Agent 学习与实战
 
-<img src="assets/banner.svg" width="100%" alt="LLM & Agent 面试题全集">
+[本 fork：jackfjy/llm_agent_interview](https://github.com/jackfjy/llm_agent_interview/tree/codex/refresh-2026-10) · [原项目与作者：dirjaker](https://github.com/dirjaker/llm_agent_interview) · [MIT](LICENSE)
 
-<br>
+保留 47 个编号专题和 9 个工具箱页面，新增 3 个可复现实验及 40 道完整场景练习。47 按 01–47 编号专题文件计数，9 按 docs/工具箱下的页面计数；场景题按独立问题计数，不把旧题库的标题数、代码行数当作质量指标。未宣称题目来自已核实的企业面试或拥有出现频率统计。
 
-### 🎯 LLM & Agent 面试题全集
+## 从这里开始
 
-[![Stars](https://img.shields.io/github/stars/dirjaker/llm_agent_interview?style=flat-square&label=Stars&color=FFD700)](https://github.com/dirjaker/llm_agent_interview/stargazers)
-[![Forks](https://img.shields.io/github/forks/dirjaker/llm_agent_interview?style=flat-square&label=Forks&color=4A90D9)](https://github.com/dirjaker/llm_agent_interview/network/members)
-[![Contributors](https://img.shields.io/github/contributors/dirjaker/llm_agent_interview?style=flat-square&label=Contributors&color=8B4513)](https://github.com/dirjaker/llm_agent_interview/graphs/contributors)
-[![License](https://img.shields.io/github/license/dirjaker/llm_agent_interview?style=flat-square&label=License&color=20B2AA)](https://github.com/dirjaker/llm_agent_interview/blob/dev/LICENSE)
+| 入口 | 用途 |
+| --- | --- |
+| [实战实验室](docs/实战实验室/index.md) | 企业知识库、可靠 Agent、真实 MCP 工具通信 |
+| [场景题 40](docs/实战实验室/场景题40.md) | 参考口述答案、失败条件、追问和来源 |
+| [岗位学习路线](docs/实战实验室/学习路线.md) | 从运行实验到交付故障证据 |
+| [原有专题导航](docs/index.md) | Python、LLM、RAG、Agent、训练、工程、网关等 47 个专题 |
+| [Top50 概念复习](docs/工具箱/TOP50-高频题.md) | 保留旧路径的概念速查；标题不代表频率调查 |
+| [公司经验笔记](docs/工具箱/COMPANY-MAP.md) | 待核实的准备假设，不代表公司招聘事实 |
+| [术语表](docs/工具箱/GLOSSARY.md) / [更新日志](docs/CHANGELOG.md) | 概念索引与版本变更 |
 
-</div>
+本分支内容以仓库和本地预览为准。[原作者已发布站点](https://dirjaker.github.io/llm_agent_interview/) 不代表本 fork 的更新版本；本分支没有发布站点。
 
----
-
-## ✨ 功能特性
-
-| 功能 | 描述 |
-|------|------|
-| 📚 **47 个专题** | Python → LLM原理 → Agent → 模型优化 → 工程化 → 生产实战 → 前沿 → 网关运维 |
-| 📝 **600+ 道题** | 精选高频面试题，含详细解答、追问场景、代码示例 |
-| 📖 **82,000+ 行** | 深度内容，每章平均 1,600 行，不是浅尝辄止的面试宝典 |
-| 🔧 **9 个工具** | 速查表、Top50 高频题、术语表、公司面试风格、调试场景集等 |
-| 🎯 **真实面试题** | 来自大厂 AI 工程师岗位的真实面试题和实战难题 |
-| 💡 **追问场景** | 每道题附带面试官可能的追问和回答策略 |
-| 📊 **难度分级** | ⭐ 基础 / ⭐⭐ 进阶 / ⭐⭐⭐ 高级三级难度标注 |
-
-## 🗺️ 学习路径
-
-> 从零基础到面试冲刺，按照 Phase 顺序逐步学习
-
-| 阶段 | 重点 | 适合人群 |
-|------|------|---------|
-| 🟢 **Phase 1** 基础知识 | Python 高级编程、LLM 原理 | 入门必读 |
-| 🔵 **Phase 2** 核心技能 | Prompt/RAG/Agent/LangChain | 核心能力 |
-| 🟣 **Phase 3** 模型优化 | 微调训练、部署推理 | 进阶提升 |
-| 🟠 **Phase 4** 工程化 | FastAPI/评估/安全/CICD/数据工程 | 工程落地 |
-| 🔴 **Phase 5** 生产实战 | 生产环境、系统设计、算法编码 | 实战检验 |
-| 🟡 **Phase 6** 面试冲刺 | 前沿方向、行为面试、多模态等 | 面试前最后冲刺 |
-| 🟢 **Phase 7** 前沿专题 | 前沿架构、Agent Loop、Context Engineering | 加分项 |
-| 🔵 **Phase 8** ML/DL 基础 | 经典机器学习、深度学习、NLP | 理论根基 |
-| 🟣 **Phase 9** 实战工程 | Agent 开发实战、LLM 应用工程 | 项目经验 |
-| 🟠 **Phase 10** 进阶专题 | LangChain/RAG/Agent 进阶 | 深度拓展 |
-| ⚪ **Phase 11** 网关运维 | LLM 网关、Token 治理、可观测性 | 架构师方向 |
-
-## 📖 在线文档
-
-<div align="center">
-
-**📚 [点击访问在线文档](https://dirjaker.github.io/llm_agent_interview/)**
-
-</div>
-
-文档链接：
-| 文档 | 说明 |
-|------|------|
-| [面试速查表](https://dirjaker.github.io/llm_agent_interview/工具箱/CHEATSHEET) | 面试前 30 分钟快速复习 |
-| [Top50 高频题](https://dirjaker.github.io/llm_agent_interview/工具箱/TOP50-高频题) | 最常考 50 题浓缩答案 |
-| [术语表](https://dirjaker.github.io/llm_agent_interview/工具箱/GLOSSARY) | 120+ 术语中英对照 |
-| [公司面试风格](https://dirjaker.github.io/llm_agent_interview/工具箱/COMPANY-MAP) | 7 家公司面试特点 |
-| [调试场景集](https://dirjaker.github.io/llm_agent_interview/工具箱/DEBUG-SCENARIOS) | 10 个生产故障排查 |
-| [系统设计模板](https://dirjaker.github.io/llm_agent_interview/工具箱/SYSTEM-DESIGN-TEMPLATES) | 5 类系统设计答题框架 |
-| [更新日志](https://dirjaker.github.io/llm_agent_interview/CHANGELOG) | 版本更新记录 |
-
-## 📂 项目结构
-
-```
-llm_agent_interview/
-├── README.md                      # 项目说明
-├── LICENSE                        # MIT 许可证
-├── docs/                          # VitePress 文档站点
-│   ├── index.md                   # 首页
-│   ├── .vitepress/                # VitePress 配置
-│   ├── 01-基础知识/               # Phase 1: Python + LLM 基础
-│   │   ├── 01-Python高级编程.md
-│   │   ├── 02-大模型发展脉络.md
-│   │   └── 03-LLM基础原理.md
-│   ├── 02-核心技能/               # Phase 2: Prompt/RAG/Agent
-│   │   ├── 04-Prompt工程.md
-│   │   ├── 05-RAG系统设计.md
-│   │   ├── 06-Agent架构与实现.md
-│   │   ├── 07-记忆系统.md
-│   │   ├── 08-多智能体系统.md
-│   │   ├── 09-MCP与工具生态.md
-│   │   ├── 10-Agent工程实践.md
-│   │   └── 11-LangChain与LangGraph.md
-│   ├── 03-模型优化/               # Phase 3: 微调 + 部署
-│   ├── 04-工程化/                 # Phase 4: FastAPI/安全/CICD
-│   ├── 05-生产实战/               # Phase 5: 生产/系统设计/编码
-│   ├── 06-面试冲刺/               # Phase 6: 冲刺 + 软技能
-│   ├── 07-前沿专题/               # Phase 7: 前沿架构
-│   ├── 08-进阶专题/               # Phase 10: 进阶深度
-│   ├── 09-大模型网关与运维/        # Phase 11: 网关运维
-│   ├── 34-40 号章节               # Phase 8-9: ML/DL + 实战
-│   └── 工具箱/                    # 面试工具箱 (9 个工具)
-└── .github/workflows/             # CI: GitHub Pages 自动部署
-```
-
-## 🚀 快速开始
+## 运行与预览
 
 ```bash
-# 克隆项目
-git clone https://github.com/dirjaker/llm_agent_interview.git
+git clone --branch codex/refresh-2026-10 https://github.com/jackfjy/llm_agent_interview.git
 cd llm_agent_interview
-
-# 安装文档依赖
-npm install
-
-# 本地预览
-npx vitepress dev docs
+npm ci
+npm run dev
+# 文档构建
+npm run build
 ```
 
-## 🛠️ 技术栈
+Python 3.11+，从仓库根目录运行默认离线实验：
 
-| 层级 | 技术 |
-|------|------|
-| **文档引擎** | VitePress 1.6 |
-| **搜索** | 内置本地搜索 |
-| **部署** | GitHub Pages + Actions |
-| **内容** | Markdown (中文) |
+```bash
+python -m unittest discover -s examples/tests -v
+python -m examples.rag.demo
+python -m examples.reliable_agent.demo
+python -m examples.evaluation.run --repeats 3 --output examples/.state/evaluation.json
+```
 
-## 📝 开发日志
+完整 SDK 与真实 MCP stdio 往返：
 
-- [x] 47 个专题全部完成
-- [x] 600+ 道面试题含解答与追问
-- [x] 9 个面试工具箱
-- [x] 11 阶段学习路径
-- [x] VitePress 文档站点 + GitHub Pages
-- [x] Phase 7 前沿专题 (2025-2026)
-- [x] Phase 8 ML/DL 基础
-- [x] Phase 9 实战工程
-- [x] Phase 10 进阶专题
-- [x] Phase 11 大模型网关与运维
-- [ ] 视频讲解
-- [ ] 模拟面试功能
+```bash
+python3.11 -m venv examples/.venv
+examples/.venv/bin/python -m pip install --require-hashes -r examples/requirements.lock
+examples/.venv/bin/python -m unittest discover -s examples/tests -v
+examples/.venv/bin/python -m examples.mcp_tools.client
+```
 
-## 📄 许可证
+`last_verified: 2026-10-26` · `versions: Python 3.11.15; mcp 2.3.0; openai 3.37.0; openai-agents 0.24.0; langgraph 1.2.17` · `example_status: offline-tested + sdk-boundary-tested`。本地 macOS arm64 完整 SDK 环境 37 项测试通过且零跳过；标准库环境 33 项通过、4 项 SDK 测试明确跳过。40 条回归输入 ×3 次共 120 次均匹配预期，包括拒答和应失败的用例；不能冒充线上业务成功率。准确指标与来源见 [examples README](examples/README.md)。
 
-[MIT License](LICENSE)
+这些数字只描述 examples，未对原有 47 个专题的所有嵌入代码逐段运行。真实 SDK 测试使用传输或模型 fixture，不调用付费 API，未验证真实模型质量。离线哈希向量与短语 rerank 是词项教学近似；Agent 单 worker，外部效果去重依赖模拟服务原子持久幂等合同；MCP 仅本地 stdio。Linux PR 工作流需实际执行后才能声称平台验证通过。
 
----
+## 维护与归属
 
-<div align="center">
+[贡献说明](CONTRIBUTING.md) 和 [维护规则](docs/实战实验室/维护规则.md) 规定来源、版本、示例状态及依赖更新流程。PR 检查构建文档、运行离线/SDK 测试和 MCP 往返，不请求模型密钥、不发布站点。原有部署仍仅面向 dev 分支及手动触发，本更新分支不触发自动发布。
 
-🔗 **GitHub**: [dirjaker/llm_agent_interview](https://github.com/dirjaker/llm_agent_interview)
-
-⭐ 如果这个项目对你有帮助，请给一个 Star 支持一下！
-
-</div>
+原项目作者为 **dirjaker**；此 fork 由 **jackfjy** 维护。保留 [MIT License](LICENSE) 的原始版权声明。

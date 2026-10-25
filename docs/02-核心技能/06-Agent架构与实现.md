@@ -10,6 +10,10 @@
 
 ---
 
+### 可运行练习：长期任务与外部效果
+
+[可靠工具 Agent](../实战实验室/可靠工具Agent.md) 把审批、持久预算、取消和外部幂等收据分开验证。单 worker 的本地 checkpoint 不能替任意外部接口提供 exactly-once；取消也不能撤销已提交效果。先运行崩溃恢复，再回答 [可靠性 8 题](../实战实验室/场景题40.md#可靠性8题)。
+
 ## 当前 API 路线与示例边界
 
 新实践以 **Responses API + 明确的工具执行循环**为主线：模型返回带类型的 Item，工具调用中的 `call_id` 必须与 `function_call_output` 对应。保存完整 `response.output`，不要只保存可见文本，否则会丢失工具调用或推理关联。对话状态可选择自行保存 Item、使用 `previous_response_id`，或使用 Conversations；选择前要考虑数据保留、重试和恢复要求。

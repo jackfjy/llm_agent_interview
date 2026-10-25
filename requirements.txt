@@ -1,3 +1,5 @@
-# llm_agent_interview - Python 依赖
-# 自动生成于 conda 环境
-
+# Python 3.11+。examples 离线核心只用标准库，无需 pip 安装。
+# 完整 SDK / MCP 环境请使用独立虚拟环境，并运行：
+# python -m pip install --require-hashes -r examples/requirements.lock
+# 本文件仅指引安装入口；不是 SDK 依赖清单，pip install -r requirements.txt 不会安装 SDK。
+# 实际精确版本与哈希以 examples/requirements.lock 为准。

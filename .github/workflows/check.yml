@@ -1,0 +1,41 @@
+name: Documentation and offline labs
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  labs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: examples/requirements.lock
+      - name: Standard-library path (four optional SDK tests may skip)
+        run: python -m unittest discover -s examples/tests -v
+      - name: Install exact SDK runtime versions with artifact hashes
+        run: python -m pip install --require-hashes -r examples/requirements.lock
+      - run: python -m pip check
+      - name: Full suite including actual SDK and MCP subprocess tests
+        run: python -m unittest discover -s examples/tests -v
+      - name: Real MCP stdio round trip (no model API)
+        run: python -m examples.mcp_tools.client
+      - name: Deterministic regression report
+        run: python -m examples.evaluation.run --repeats 3 --output examples/.state/evaluation.json
