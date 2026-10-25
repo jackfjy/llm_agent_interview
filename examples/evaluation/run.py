@@ -80,16 +80,26 @@ def evaluate(cases, repeats=3):
         raise ValueError('positive repeats and nonempty cases required')
     outcomes, failures, results = [], [], []
     budgets = {'tool_attempts': 0, 'cost_units': 0, 'charged_tool_seconds': 0.0}
+    unknown_budget_trials = 0
     agent_trials = agent_completed = 0
     for case in cases:
         row = []
         for trial in range(repeats):
-            passed, actual, budget = run_case(case)
+            if case['kind'] == 'agent':
+                agent_trials += 1
+            try:
+                passed, actual, budget = run_case(case)
+            except Exception as exc:
+                row.append(False)
+                unknown_budget_trials += 1
+                failures.append({'name': case['name'], 'trial': trial + 1,
+                                 'actual': None, 'expected': case['expected'], 'budget': None,
+                                 'exception': {'type': type(exc).__name__, 'message': str(exc)}})
+                continue
             row.append(passed)
             for key in budgets:
                 budgets[key] += budget[key]
             if case['kind'] == 'agent':
-                agent_trials += 1
                 agent_completed += actual['status'] == 'completed'
             if not passed:
                 failures.append({'name': case['name'], 'trial': trial + 1,
@@ -100,7 +110,11 @@ def evaluate(cases, repeats=3):
             'passed_trials': sum(sum(row) for row in outcomes), **summarize(outcomes),
             'agent_completion_rate': agent_completed / agent_trials if agent_trials else None,
             'agent_completed_trials': agent_completed, 'agent_trials': agent_trials,
-            'budgets': budgets, 'failures': failures, 'results': results}
+            'budgets': budgets,
+            'budget_accounting': {'known_trials': len(cases) * repeats - unknown_budget_trials,
+                                  'unknown_trials': unknown_budget_trials,
+                                  'complete': unknown_budget_trials == 0},
+            'failures': failures, 'results': results}
 
 
 def main():

@@ -15,7 +15,7 @@ python -m examples.reliable_agent.demo
 python -m examples.evaluation.run --repeats 3 --output examples/.state/evaluation.json
 ```
 
-本次完整 SDK 环境运行 37 项测试全部通过、0 跳过；纯标准库环境运行同一套 37 项测试，33 项通过、4 个可选 SDK 测试明确跳过。测试包含 40 个回归输入的重复执行。不要把 `skipped` 当作 SDK 验证通过。
+本次完整 SDK 环境运行 40 项测试全部通过、0 跳过；纯标准库环境运行同一套 40 项测试，36 项通过、4 个可选 SDK 测试明确跳过。测试包含 40 个回归输入的重复执行。不要把 `skipped` 当作 SDK 验证通过。
 
 安装 SDK 环境后，用同一个解释器重跑全部测试和真实 MCP 往返：
 
@@ -121,7 +121,13 @@ pending → waiting_approval → running → completed
 
 后两个是本次重复试验的**观测值**，并未用 40 条不同任务伪装成同一任务的 40 次采样。只有在每次独立同分布、单次成功率为 p 时，理论值才分别为 `1-(1-p)^k` 和 `p^k`；这个确定性小实验不支持估计真实模型的独立成功概率。另有混合成败测试，验证 any/all 指标不会混淆。
 
-全通过预期：`case_count=40`、`trial_count=120`、`passed_trials=120`、`pass_at_k=1`、`pass_power_k=1`、`agent_completed_trials=15`、`agent_trials=36`。预算字段 `tool_attempts` / `cost_units` 表示 Agent 已预留尝试数及模拟成本；预留后、调度前取消也保留这笔预算，因此不等于真正发出的调用数。`charged_tool_seconds` 包含崩溃后保留的保守时间预留，不是精确性能基准。输出文件和 SQLite 状态放在已忽略的 `examples/.state/`，demo 使用临时目录并自动清理。
+全通过预期：`case_count=40`、`trial_count=120`、`passed_trials=120`、`pass_at_k=1`、`pass_power_k=1`、`agent_completed_trials=15`、`agent_trials=36`。预算字段 `tool_attempts` / `cost_units` 表示 Agent 已预留尝试数及模拟成本；预留后、调度前取消也保留这笔预算，因此不等于真正发出的调用数。`charged_tool_seconds` 包含崩溃后保留的保守时间预留，不是精确性能基准。
+
+单次试验发生意外 `Exception` 时，报告在 `failures` 中保留案例名、从 1 开始的试验序号、异常类型与消息，`actual` 和 `budget` 为 `null`，然后继续后续独立试验。该次计入总试验和 Agent 试验（若适用）的分母，不计为匹配预期或已完成；CLI 仍写出 JSON 并以非零状态退出。`KeyboardInterrupt` / `SystemExit` 等进程控制异常继续向外传播。
+
+`budgets` 仅汇总正常返回试验的已知用量；`budget_accounting` 给出 `known_trials`、`unknown_trials` 和 `complete`。异常试验可能已经消耗资源，其用量未知，不能当作 0，也不能在 `complete=false` 时把已知小计当完整总量。正常 40×3 回归应为 120 次已知、0 次未知、`complete=true`。
+
+输出文件和 SQLite 状态放在已忽略的 `examples/.state/`，demo 使用临时目录并自动清理。
 
 ## 来源与验证边界
 

@@ -47,7 +47,7 @@ examples/.venv/bin/python -m unittest discover -s examples/tests -v
 examples/.venv/bin/python -m examples.mcp_tools.client
 ```
 
-`last_verified: 2026-10-26` · `versions: Python 3.11.15; mcp 2.3.0; openai 3.37.0; openai-agents 0.24.0; langgraph 1.2.17` · `example_status: offline-tested + sdk-boundary-tested`。本地 macOS arm64 完整 SDK 环境 37 项测试通过且零跳过；标准库环境 33 项通过、4 项 SDK 测试明确跳过。40 条回归输入 ×3 次共 120 次均匹配预期，包括拒答和应失败的用例；不能冒充线上业务成功率。准确指标与来源见 [examples README](examples/README.md)。
+`last_verified: 2026-10-26` · `versions: Python 3.11.15; mcp 2.3.0; openai 3.37.0; openai-agents 0.24.0; langgraph 1.2.17` · `example_status: offline-tested + sdk-boundary-tested`。本地 macOS arm64 完整 SDK 环境 40 项测试通过且零跳过；标准库环境 36 项通过、4 项 SDK 测试明确跳过。40 条回归输入 ×3 次共 120 次均匹配预期，包括拒答和应失败的用例；不能冒充线上业务成功率。准确指标与来源见 [examples README](examples/README.md)。
 
 这些数字只描述 examples，未对原有 47 个专题的所有嵌入代码逐段运行。真实 SDK 测试使用传输或模型 fixture，不调用付费 API，未验证真实模型质量。离线哈希向量与短语 rerank 是词项教学近似；Agent 单 worker，外部效果去重依赖模拟服务原子持久幂等合同；MCP 仅本地 stdio。Linux PR 工作流需实际执行后才能声称平台验证通过。
 

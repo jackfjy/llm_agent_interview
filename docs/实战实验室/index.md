@@ -26,7 +26,7 @@ python -m examples.reliable_agent.demo
 python -m examples.evaluation.run --repeats 3 --output examples/.state/evaluation.json
 ```
 
-离线核心只有标准库。完整 SDK 环境安装与 MCP 命令见 [MCP 实验](./MCP工具服务.md)。本地核验：SDK 环境 37 项全部通过且无跳过；纯标准库环境 33 项通过、4 项 SDK 测试明确跳过。40 条回归输入重复 3 次共 120 次均匹配预期，其中包含应该拒绝或失败的案例，不能说业务完成率为 100%。
+离线核心只有标准库。完整 SDK 环境安装与 MCP 命令见 [MCP 实验](./MCP工具服务.md)。本地核验：SDK 环境 40 项全部通过且无跳过；纯标准库环境 36 项通过、4 项 SDK 测试明确跳过。40 条回归输入重复 3 次共 120 次均匹配预期，其中包含应该拒绝或失败的案例，不能说业务完成率为 100%。意外试验异常会作为失败记录类型与消息，继续后续试验并写出 JSON；异常用量标为未知，预算只汇总已知试验，CLI 返回非零状态。字段说明见 [examples README](https://github.com/jackfjy/llm_agent_interview/blob/codex/refresh-2026-10/examples/README.md)。
 
 离线向量和 rerank 是词项教学近似；模型 fixture 不代表真实模型质量；Agent 只支持单 worker，副作用去重依赖外部系统的幂等合同。MCP 只验证 stdio，无 HTTP/OAuth 互通承诺。
 
